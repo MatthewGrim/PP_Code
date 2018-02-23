@@ -58,6 +58,11 @@ def plot_stopping_distances():
 		ax[0].loglog(temperatures, lamda_numerical, label='{}'.format(density))
 		ax[1].semilogy(final_ion_energy, temperatures, label='{}'.format(density))
 	
+	# Print out half energy partition temperature
+	print("Half Energy Partition Temperatures")
+	for i, density in enumerate(densities):
+		print("Density: {}, Temperature: {}".format(density, t_halves[i]))
+
 	# Set up plot to be similar to FLMM paper 
 	fig.suptitle("Alpha particle thermalisation in different bulk plasma conditions")
 	if normalise:
@@ -75,10 +80,6 @@ def plot_stopping_distances():
 	ax[1].legend()
 	
 	plt.show()
-
-	print("Half Energy Partition Temperatures")
-	for i, density in enumerate(densities):
-		print("Density: {}, Temperature: {}".format(density, t_halves[i]))
 
 
 def plot_U_x():
@@ -104,6 +105,6 @@ def plot_U_x():
 
 
 if __name__ == '__main__':
-	plot_stopping_distances()
-	# plot_U_x()
+	# plot_stopping_distances()
+	plot_U_x()
 
