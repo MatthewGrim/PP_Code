@@ -17,6 +17,7 @@ from plasma_physics.pysrc.theory.thermalisation.flmm_model import FLMMmodel
 
 def plot_stopping_distances():
 	normalise = True
+	plot_components = False
 	num_pts = 100
 	
 	temperatures = np.logspace(0, 2, num_pts)
@@ -43,20 +44,25 @@ def plot_stopping_distances():
 			lamda_numerical[j] = x[-1]
 			final_electron_energy[j] = U_ele[-1]
 			final_ion_energy[j] = U_ion[-1]
-			
-		T_f = interpolate.interp1d(final_ion_energy, temperatures)			
-		t_halves[i] = T_f(0.5)
-
+		
 		# Multiply by densities for plotting
 		if normalise:
 			lamda_e *= density
 			lamda_i *= density
 			lamda_numerical *= density
 
-		# ax[0].loglog(temperatures, lamda_e, label='electron_stopping_distance_{}'.format(density))
-		# ax[0].loglog(temperatures, lamda_i, label='ion_stopping_distance_{}'.format(density))
+		if plot_components:
+			ax[0].loglog(temperatures, lamda_e, label='electron_stopping_distance_{}'.format(density))
+			ax[0].loglog(temperatures, lamda_i, label='ion_stopping_distance_{}'.format(density))
 		ax[0].loglog(temperatures, lamda_numerical, label='{}'.format(density))
 		ax[1].semilogy(final_ion_energy, temperatures, label='{}'.format(density))
+
+		# Get half temperatures
+		try:	
+			T_f = interpolate.interp1d(final_ion_energy, temperatures)			
+			t_halves[i] = T_f(0.5)
+		except:
+			t_halves[i] = np.nan
 	
 	# Print out half energy partition temperature
 	print("Half Energy Partition Temperatures")
@@ -105,6 +111,6 @@ def plot_U_x():
 
 
 if __name__ == '__main__':
-	# plot_stopping_distances()
-	plot_U_x()
+	plot_stopping_distances()
+	# plot_U_x()
 
