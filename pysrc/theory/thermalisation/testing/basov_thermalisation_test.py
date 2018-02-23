@@ -18,8 +18,10 @@ def plot_basov_thermalisation_test():
 	Take parameters from section 6.4 of Basov's thesis and regenerate the same curve using Fraley
 	"""
 	solid_density = 0.213
+	m3_to_cm3 = 1e-6
+	M_dt = 5.0301510601
 	avogadro_constant = 6.023e23
-	plasma_density = 1e30 / avogadro_constant * 5 * 1e-3
+	plasma_density = 1e30 / avogadro_constant * M_dt * m3_to_cm3
 	temperatures = np.linspace(0.0, 200.0, 50)
 
 	# Numerical integration for more exact value
@@ -31,6 +33,8 @@ def plot_basov_thermalisation_test():
 		final_ion_energy[j] = U_ion[-1]
 
 	basov_data = np.loadtxt("data/basov_curve.txt")
+
+	print("Plasma Density: {}gcm-3".format(plasma_density))
 
 	plt.figure()
 
