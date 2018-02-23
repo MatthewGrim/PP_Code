@@ -44,7 +44,7 @@ def plot_basov_thermalisation_test():
 	plt.axhline(0.9, linestyle='--')
 
 	plt.xlabel("Temperature (keV)")
-	plt.xlabel("U_ion / U")
+	plt.ylabel("U_ion / U")
 	plt.title("Comparison of Current Fraley implementation with Basov thesis")
 	plt.show()
 
