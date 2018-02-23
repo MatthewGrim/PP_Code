@@ -58,6 +58,8 @@ class FLMMmodel(object):
 		electron_absorption *= (particle_energy ** 0.5) / (temperature ** 1.5) * (density / solid_density)
 		electron_absorption *= -23.2
 
+		# ion_absorption = 1.0 + 0.075 * (np.log(np.sqrt(temperature * (solid_density / density))) + \
+			             # 0.5 * np.log(np.sqrt(temperature)))
 		ion_absorption = 1.0 + 0.075 * np.log(np.sqrt(temperature * (solid_density / density) * particle_energy))
 		ion_absorption *= (density / solid_density) / particle_energy
 		ion_absorption *= -0.047
