@@ -47,20 +47,26 @@ class FLMMmodel(object):
 		return ion_stopping_distance
 
 	@staticmethod
-	def energy_range_relationship(temperature, density, solid_density, particle_energy):
+	def energy_range_relationship(temperature, density, solid_density, particle_energy,
+								  use_approx=True):
 		"""
 		temperature: the temperature of the ambient plasma
 		density: density of the ambient plasma
 		solid_density: reference solid density of the plasma
 		particle_energy: energy of the particle being thermalised
 		"""
-		electron_absorption = 1.0 + 0.17 * np.log(temperature * np.sqrt(solid_density / density))
-		electron_absorption *= (particle_energy ** 0.5) / (temperature ** 1.5) * (density / solid_density)
-		electron_absorption *= -23.2
+		if particle_energy > temperature / 3.5e3:
+			electron_absorption = 1.0 + 0.17 * np.log(temperature * np.sqrt(solid_density / density))
+			electron_absorption *= (particle_energy ** 0.5) / (temperature ** 1.5) * (density / solid_density)
+			electron_absorption *= -23.2
+		else:
+			electron_absorption = 0.0
 
-		# ion_absorption = 1.0 + 0.075 * (np.log(np.sqrt(temperature * (solid_density / density))) + \
-			             # 0.5 * np.log(np.sqrt(temperature)))
-		ion_absorption = 1.0 + 0.075 * np.log(np.sqrt(temperature * (solid_density / density) * particle_energy))
+		if use_approx:
+			ion_absorption = 1.0 + 0.075 * (np.log(np.sqrt(temperature * (solid_density / density))) + \
+				             0.5 * np.log(np.sqrt(temperature)))
+		else:
+			ion_absorption = 1.0 + 0.075 * np.log(np.sqrt(temperature * (solid_density / density) * particle_energy))
 		ion_absorption *= (density / solid_density) / particle_energy
 		ion_absorption *= -0.047
 
