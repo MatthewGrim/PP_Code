@@ -55,7 +55,7 @@ class FLMMmodel(object):
 		solid_density: reference solid density of the plasma
 		particle_energy: energy of the particle being thermalised
 		"""
-		if particle_energy > temperature / 3.5e3:
+		if np.any(particle_energy > temperature / 3.5e3):
 			electron_absorption = 1.0 + 0.17 * np.log(temperature * np.sqrt(solid_density / density))
 			electron_absorption *= (particle_energy ** 0.5) / (temperature ** 1.5) * (density / solid_density)
 			electron_absorption *= -23.2
@@ -96,10 +96,10 @@ class FLMMmodel(object):
 		t_ele = temperature / 3.5e3
 
 		dx = 0.0
-		dU = -0.0001
+		dU = -0.001
 		while U > 0.0:
 			du_ele, du_ion, du_tot = FLMMmodel.energy_range_relationship(temperature, density, solid_density, U)
-
+			
 			dx = dU / du_tot
 			
 			# Add energy to electron and ion components based on relative temperature
