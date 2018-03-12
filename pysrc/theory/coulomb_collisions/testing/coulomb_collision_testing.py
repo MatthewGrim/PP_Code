@@ -19,7 +19,7 @@ def plot_collisional_angles():
 	Simple function to plot the scattering angles for different binary collisions at they vary with
 	impact parameter ratio  
 	"""
-	impact_parameter_ratios = np.linspace(0.0, 10.0, 100)
+	impact_parameter_ratios = np.linspace(0.1, 10.0, 1000)
 
 	deuterium = ChargedParticle(2.01410178 * 1.66054e-27, PhysicalConstants.electron_charge)
 	electron = ChargedParticle(9.014e-31, -PhysicalConstants.electron_charge)
@@ -33,17 +33,19 @@ def plot_collisional_angles():
 	collision_pairs = [["Deuterium-Deuterium", deuterium, deuterium, deuterium_velocity],
 	                   ["Electron-Deuterium", electron, deuterium, electron_velocity],
 	                   ["Electron-Electron", electron, electron, electron_velocity]]
-	for pair in collision_pairs:
+	for j, pair in enumerate(collision_pairs):
 		name = pair[0]
 		p_1 = pair[1]
 		p_2 = pair[2]
 		velocity = pair[3]
 
 		chi = np.zeros(impact_parameter_ratios.shape)
+		cross_section = np.zeros(impact_parameter_ratios.shape)
 		for i, impact_parameter_ratio in enumerate(impact_parameter_ratios):
 			collision = CoulombCollision(p_1, p_2, impact_parameter_ratio, velocity)
 
 			chi[i] = collision.chi
+			cross_section[i] = collision.differential_cross_section
 
 		collision = CoulombCollision(p_1, p_2, 1.0, velocity)
 		b_90 = collision.b_90
@@ -55,13 +57,18 @@ def plot_collisional_angles():
 		chi *= 180.0
 
 		# Plot chi vs.impact parameter 
-		plt.figure()
+		fig, ax = plt.subplots(2, figsize=(10, 10))
 
-		plt.plot(impact_parameter_ratios, chi)
+		ax[0].plot(impact_parameter_ratios, chi)
+		ax[0].set_title("Scattering angle vs Impact parameter for {} Collision".format(name))
+		ax[0].set_xlabel("Impact parameter ratio (b / b_90)")
+		ax[0].set_ylabel("Scattering angle (degrees)")
 
-		plt.title("Scattering angle vs Impact parameter for {} Collision")
-		plt.xlabel("Impact parameter ratio (b / b_90)")
-		plt.ylabel("Scattering angle (degrees)")
+		ax[1].semilogy(chi, cross_section)
+		ax[1].set_title("Cross Section vs Impact parameter for {} Collision".format(name))
+		ax[1].set_xlabel("Impact parameter ratio (b / b_90)")
+		ax[1].set_ylabel("Number of collisions at given solid angle")
+
 		plt.show()
 
 
@@ -101,5 +108,5 @@ def plot_impact_parameter_variation_with_temperature():
 
 if __name__ == '__main__':
 	plot_collisional_angles()
-	plot_impact_parameter_variation_with_temperature()
+	# plot_impact_parameter_variation_with_temperature()
 

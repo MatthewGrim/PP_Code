@@ -10,6 +10,7 @@ import numpy as np
 
 class UnitConversions(object):
 	eV_to_K = 1.1604522167e4
+	K_to_eV = 1 / eV_to_K
 
 	def __init__(self):
 		raise RuntimeException("This class is static!")

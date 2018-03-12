@@ -40,8 +40,11 @@ class CoulombCollision(object):
 		"""
 		assert isinstance(particle_1, ChargedParticle)
 		assert isinstance(particle_2, ChargedParticle)
-		assert isinstance(impact_parameter_ratio, float)
-		assert isinstance(velocity, float)
+		assert isinstance(impact_parameter_ratio, float) or isinstance(impact_parameter_ratio, np.ndarray)
+		assert isinstance(velocity, float) or isinstance(velocity, np.ndarray)
+
+		self.__p_1 = particle_1
+		self.__p_2 = particle_2
 
 		# Calculate the effective mass of the particle in the reference frame of particle 2
 		m_1 = particle_1.m
@@ -54,6 +57,7 @@ class CoulombCollision(object):
 		q_2 = np.abs(particle_2.q)
 		self.__b_90 = q_1 * q_2 / (4.0 * np.pi * PhysicalConstants.epsilon_0)
 		self.__b_90 /= effective_mass * velocity ** 2
+
 		self.__theta = theta 
 		self.__chi = np.pi + 2 * theta
 
@@ -61,6 +65,16 @@ class CoulombCollision(object):
 		v_x = velocity * np.cos(self.__chi)
 		v_y = velocity * np.sin(self.__chi)
 		self.__v_final = np.asarray([v_x, v_y])
+
+		self.__differential_cross_section = self.__b_90 ** 2 / (4 * np.sin(self.__chi) ** 4.0)
+
+	@property
+	def p_1(self):
+		return self.__p_1
+
+	@property
+	def p_2(self):
+		return self.__p_2
 
 	@property
 	def b_90(self):
@@ -73,6 +87,10 @@ class CoulombCollision(object):
 	@property
 	def v_final(self):
 		return self.__v_final
+
+	@property
+	def differential_cross_section(self):
+		return self.__differential_cross_section
 
 
 if __name__ == '__main__':
