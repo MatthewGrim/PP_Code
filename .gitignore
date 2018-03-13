@@ -1,10 +1,17 @@
+# --- Directories ---
 venv_pp/*
 __pycache__/
 node_modules
 
-*.sublime*
+**/mesh_data/*
+**/results/*
 
+# --- File types ---
+*.sublime*
 *.json
 *.png
 *.txt
 *.pyc
+*.idea
+*.vti
+*.cache
