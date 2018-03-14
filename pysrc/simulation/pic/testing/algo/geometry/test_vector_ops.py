@@ -16,6 +16,17 @@ class VectorOpsTest(unittest.TestCase):
         self.assertEqual(np.sqrt(3.0), magnitude(np.ones(3)))
         self.assertEqual(3.0, magnitude(np.asarray([1.0, 2.0, -2.0])))
 
+    def test_normalise(self):
+        np.random.seed(1)
+        for i in range(3):
+            iteration = 0
+            while iteration < 1000:
+                vec = np.random.rand(3)
+                vec = normalise(vec)
+                self.assertAlmostEqual(magnitude(vec), 1.0)
+
+                iteration += 1
+
     def test_dot(self):
         # Zero vectors
         self.assertEqual(0.0, dot(np.zeros(3), np.ones(3)))

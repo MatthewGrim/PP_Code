@@ -16,8 +16,16 @@ def magnitude(vector):
     assert isinstance(vector, np.ndarray) and len(vector.shape) == 1, vector
     squared_vector = vector * vector
     squared_magnitude = squared_vector.sum()
+
     return math.sqrt(squared_magnitude)
 
+def normalise(vector):
+    """
+    Normalise a vector by dividing by its magnitude
+    """
+    assert isinstance(vector, np.ndarray) and len(vector.shape) == 1, vector
+
+    return vector / magnitude(vector)
 
 def dot(vector_1, vector_2):
     """
