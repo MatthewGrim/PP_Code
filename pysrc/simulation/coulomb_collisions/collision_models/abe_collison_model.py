@@ -93,11 +93,11 @@ class AbeCoulombCollisionModel(object):
         # Step 4 - Calculate du
         du = np.zeros((3,))
         du[0] = u_rel[0] / u_xy * u_rel[2] * s_theta * c_phi - \
-                u_rel[1] / u_xy * u * s_theta * s_phi - \
-                u_rel[0] * one_minus_c_theta
+            u_rel[1] / u_xy * u * s_theta * s_phi - \
+            u_rel[0] * one_minus_c_theta
         du[1] = u_rel[1] / u_xy * u_rel[2] * s_theta * c_phi + \
-                u_rel[0] / u_xy * u * s_theta * s_phi - \
-                u_rel[1] * one_minus_c_theta
+            u_rel[0] / u_xy * u * s_theta * s_phi - \
+            u_rel[1] * one_minus_c_theta
         du[2] = -u_xy * s_theta * c_phi - u_rel[2] * one_minus_c_theta
 
         # Step 5 - Update velocities

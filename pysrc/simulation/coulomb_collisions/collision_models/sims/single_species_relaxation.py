@@ -15,6 +15,7 @@ from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import 
 from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.abe_collison_model import AbeCoulombCollisionModel
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
+
 def run_sim():
     """
     Runs simulation of a single species in a uniform velocity distribution
@@ -26,7 +27,7 @@ def run_sim():
     particle = ChargedParticle(2.01410178 * 1.66054e-27, PhysicalConstants.electron_charge)
     n = 10000
     weight = 1
-    weighted_particle = ChargedParticle(2.01410178 * 1.66054e-27 * weight, 
+    weighted_particle = ChargedParticle(2.01410178 * 1.66054e-27 * weight,
                                         PhysicalConstants.electron_charge * weight)
     sim = AbeCoulombCollisionModel(n, particle, weight)
 
@@ -39,26 +40,30 @@ def run_sim():
     v_K = process.kinetic_loss_stationary_frequency(n * weight, 1.0, 2.0)
     v_P = process.momentum_loss_stationary_frequency(n * weight, 1.0, 2.0)
     collision_time = 1.0 / max([v_K, v_P])
-    dt = 0.001 * collision_time
+    dt = 0.01 * collision_time
     final_time = 2.5 * collision_time
 
     t, v_results = sim.run_sim(velocities, dt, final_time)
 
-    # Get average momentum in each direction - this should be where 
+    # Get average momentum in each direction - this should be where
     # the normal distribution is centred
-    v_x_ave = np.average(velocities[:, 0])
-    v_y_ave = np.average(velocities[:, 1])
-    v_z_ave = np.average(velocities[:, 2])
-    print("Initial average x velocity: {}".format(v_x_ave))
-    print("Initial average y velocity: {}".format(v_y_ave))
-    print("Initial average z velocity: {}".format(v_z_ave))
-    # the normal distribution is centred
-    v_x_ave = np.average(v_results[:, 0, -1])
-    v_y_ave = np.average(v_results[:, 1, -1])
-    v_z_ave = np.average(v_results[:, 2, -1])
-    print("Final average x velocity: {}".format(v_x_ave))
-    print("Final average y velocity: {}".format(v_y_ave))
-    print("Final average z velocity: {}".format(v_z_ave))
+    v_x_ave_init = np.average(velocities[:, 0])
+    v_y_ave_init = np.average(velocities[:, 1])
+    v_z_ave_init = np.average(velocities[:, 2])
+    print("Initial average x velocity: {}".format(v_x_ave_init))
+    print("Initial average y velocity: {}".format(v_y_ave_init))
+    print("Initial average z velocity: {}\n".format(v_z_ave_init))
+
+    v_x_ave_fin = np.average(v_results[:, 0, -1])
+    v_y_ave_fin = np.average(v_results[:, 1, -1])
+    v_z_ave_fin = np.average(v_results[:, 2, -1])
+    print("Final average x velocity: {}".format(v_x_ave_fin))
+    print("Final average y velocity: {}".format(v_y_ave_fin))
+    print("Final average z velocity: {}\n".format(v_z_ave_fin))
+
+    print("Change in average x velocity: {}".format(v_x_ave_fin - v_x_ave_init))
+    print("Change in average y velocity: {}".format(v_y_ave_fin - v_y_ave_init))
+    print("Change in average z velocity: {}".format(v_z_ave_fin - v_z_ave_init))
 
     fig, ax = plt.subplots(3, 3, figsize=(10, 10))
 
