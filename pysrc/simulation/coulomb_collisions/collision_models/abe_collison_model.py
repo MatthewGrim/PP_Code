@@ -57,8 +57,7 @@ class AbeCoulombCollisionModel(object):
         # Coulomb logarithm is currently fixed in method
         self.__coulomb_logarithm = 10.0
 
-    @staticmethod
-    def randomise_velocities(vel):
+    def __randomise_velocities(self, vel):
         """
         Randomise the addresses of particles from each species. In such a way
         pairs of particles in adjacent indices are formed for collisions
@@ -66,7 +65,11 @@ class AbeCoulombCollisionModel(object):
         vel: Nx3 array of velocity components for particles, the velocities
              contain the particles of each species sequentially, N = n_1 + n_2
         """
-        np.random.shuffle(vel)
+        if self.__single_species:
+            np.random.shuffle(vel)
+        else:
+            np.random.shuffle(vel[:self.__n_1, :])
+            np.random.shuffle(vel[self.__n_1:, :])
 
     def calculate_post_collision_velocities(self, v_1, v_2, dt):
         """
@@ -92,13 +95,18 @@ class AbeCoulombCollisionModel(object):
 
         # Step 4 - Calculate du
         du = np.zeros((3,))
-        du[0] = u_rel[0] / u_xy * u_rel[2] * s_theta * c_phi - \
-            u_rel[1] / u_xy * u * s_theta * s_phi - \
-            u_rel[0] * one_minus_c_theta
-        du[1] = u_rel[1] / u_xy * u_rel[2] * s_theta * c_phi + \
-            u_rel[0] / u_xy * u * s_theta * s_phi - \
-            u_rel[1] * one_minus_c_theta
-        du[2] = -u_xy * s_theta * c_phi - u_rel[2] * one_minus_c_theta
+        if u_xy != 0.0:
+            du[0] = u_rel[0] / u_xy * u_rel[2] * s_theta * c_phi - \
+                u_rel[1] / u_xy * u * s_theta * s_phi - \
+                u_rel[0] * one_minus_c_theta
+            du[1] = u_rel[1] / u_xy * u_rel[2] * s_theta * c_phi + \
+                u_rel[0] / u_xy * u * s_theta * s_phi - \
+                u_rel[1] * one_minus_c_theta
+            du[2] = -u_xy * s_theta * c_phi - u_rel[2] * one_minus_c_theta
+        else:
+            du[0] = u * s_theta * c_phi
+            du[1] = u * s_theta * s_phi
+            du[2] = -u * one_minus_c_theta
 
         # Step 5 - Update velocities
         new_v_1 = v_1 + self.__m_eff / self.__m_1 * du
@@ -116,21 +124,37 @@ class AbeCoulombCollisionModel(object):
         """
         # Function is not implemented for multiple species, or odd particle
         # number
-        if self.__single_species is not True or self.__n_1 % 2 != 0:
-            raise RuntimeError("Multiple species is not yet implemented!")
+        if self.__single_species:
+            assert(self.__n_1 % 2 == 0), "Uneven number of particles is not implemented"
 
-        # Step 1 - Randomly change addresses of velocities, for each species
-        AbeCoulombCollisionModel.randomise_velocities(vel)
+            # Step 1 - Randomly change addresses of velocities, for each species
+            self.__randomise_velocities(vel)
 
-        # Step 2 - Calculate post-collisional velocities
-        new_vel = np.zeros(vel.shape)
-        for i in range(vel.shape[0] // 2):
-            idx = 2 * i
-            v_1 = vel[idx, :]
-            v_2 = vel[idx + 1, :]
-            new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt)
-            new_vel[idx, :] = new_v_1
-            new_vel[idx + 1, :] = new_v_2
+            # Step 2 - Calculate post-collisional velocities
+            new_vel = np.zeros(vel.shape)
+            for i in range(vel.shape[0] // 2):
+                idx = 2 * i
+                v_1 = vel[idx, :]
+                v_2 = vel[idx + 1, :]
+                new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt)
+                new_vel[idx, :] = new_v_1
+                new_vel[idx + 1, :] = new_v_2
+        else:
+            assert(self.__n_1 == self.__n_2), "Different number of particles is not implemented"
+
+            # Step 1 - Randomly change addresses of velocities, for each species
+            self.__randomise_velocities(vel)
+
+            # Step 2 - Calculate post-collisional velocities
+            new_vel = np.zeros(vel.shape)
+            for i in range(self.__n_1):
+                idx_1 = i
+                idx_2 = self.__n_1 + i
+                v_1 = vel[idx_1, :]
+                v_2 = vel[idx_2, :]
+                new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt)
+                new_vel[idx_1, :] = new_v_1
+                new_vel[idx_2, :] = new_v_2
 
         return new_vel
 
@@ -152,19 +176,23 @@ class AbeCoulombCollisionModel(object):
         num_steps = math.ceil(final_time / dt) + 1
         vel_results = np.zeros((vel.shape[0], vel.shape[1], num_steps))
         vel_results[:, :, 0] = vel
-        idx = 0
+        times = np.zeros((num_steps,))
+        idx = 1
         t = 0.0
+        times[0] = t
         print("Starting simulation...")
         while idx < num_steps:
-            vel = self.single_time_step(vel, dt)
-
-            vel_results[:, :, idx] = vel
-
-            idx += 1
             t += dt
             print("Timestep {}: t = {}".format(idx, t))
 
-        return t, vel_results
+            vel = self.single_time_step(vel, dt)
+
+            vel_results[:, :, idx] = vel
+            times[idx] = t
+
+            idx += 1
+
+        return times, vel_results
 
 
 if __name__ == '__main__':
