@@ -17,8 +17,8 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
 class AbeCoulombCollisionModel(object):
-    def __init__(self, n_1, n_2, particle_1, particle_weighting,
-                 particle_2=None):
+    def __init__(self, n_1, particle_1, particle_weighting=1,
+                 n_2=None, particle_2=None):
         """
         Used to simulate collisions between two particle species
 
@@ -30,25 +30,28 @@ class AbeCoulombCollisionModel(object):
                             in simulation
         """
         assert isinstance(n_1, int)
-        assert isinstance(n_2, int)
         assert isinstance(particle_weighting, int)
         assert isinstance(particle_1, ChargedParticle)
+        assert n_2 is None or isinstance(n_2, int)
         assert particle_2 is None or isinstance(particle_2, ChargedParticle)
 
         # Define first particle species
-        self.__m_1 = particle_1.p_1.m * particle_weighting
-        self.__q_1 = particle_1.p_1.q * particle_weighting
+        self.__m_1 = particle_1.m * particle_weighting
+        self.__q_1 = particle_1.q * particle_weighting
         self.__n_1 = n_1
 
         # Define second particle species, if it exists
         if particle_2 is not None:
             self.__single_species = False
-            self.__m_2 = particle_2.p_2.m * particle_weighting
-            self.__q_2 = particle_2.p_2.q * particle_weighting
+            self.__m_2 = particle_2.m * particle_weighting
+            self.__q_2 = particle_2.q * particle_weighting
             self.__n_2 = n_2
             self.__m_eff = self.__m_1 * self.__m_2 / (self.__m_1 + self.__m_2)
         else:
-            self.__single_species = False
+            self.__single_species = True
+            self.__m_2 = self.__m_1
+            self.__q_2 = self.__q_1
+            self.__n_2 = self.__n_1
             self.__m_eff = self.__m_1 ** 2 / (2 * self.__m_1)
 
         # Coulomb logarithm is currently fixed in method
@@ -65,49 +68,43 @@ class AbeCoulombCollisionModel(object):
         """
         np.random.shuffle(vel)
 
-    @staticmethod
-    def calculate_post_collision_velocities(v_1, v_2, dt):
+    def calculate_post_collision_velocities(self, v_1, v_2, dt):
         """
         Calculate the post collisional velocities of  a given pair of particles
         """
-        # Step 1 - Get relative velocity u
+        # Step 1 - Get relative velocity u and perpendicular velocity u_xy
         u_rel = v_1 - v_2
-        u_bar = vector_ops.normalise(u_lab)
-        u = magnitude(u_rel)
-
-        # Step 2 - Calculate angles theta and phi between the lab and reference
-        #          frame
-        u_xy = u_bar
-        u_xy[2] = 0.0
-        u_xy_bar = vector_ops.normalise(u_xy)
-        u_xy = magnitude(u_xy)
-
-        theta = np.arccos(u_bar[2])
-        phi = np.arccos(u_xy_bar[0])
+        u = vector_ops.magnitude(u_rel)
+        u_xy = np.sqrt(u_rel[0] ** 2 + u_rel[1] ** 2)
 
         # Step 3 - Get scattering angles THETA and PHI
         PHI = np.random.uniform(0.0, 2.0 * np.pi)
-        delta_squared = self.__q_1 ** 2 * self.__q_2 ** 2 * np.min([self.__n_1, self.__n_2])
-        delta_squared *= dt * self.__coulomb_logarithm
-        delta_squared /= 8.0 * np.pi * u_bar ** 3 * self.__m_eff ** 2 * PhysicalConstants.epsilon_0 ** 2
+        c_phi = np.cos(PHI)
+        s_phi = np.sin(PHI)
 
-        delta = np.random.normal(0.0, delta_squared)
-        THETA = np.arcsin(2 * delta / (1 + delta ** 2))
+        delta_squared = self.__q_1 ** 2 * self.__q_2 ** 2 * self.__n_1
+        delta_squared *= dt * self.__coulomb_logarithm
+        delta_squared /= 8.0 * np.pi * u ** 3 * self.__m_eff ** 2 * PhysicalConstants.epsilon_0 ** 2
+
+        delta = np.random.normal(0.0, np.sqrt(delta_squared))
+        s_theta = 2 * delta / (1 + delta ** 2)
+        one_minus_c_theta = 2 * delta ** 2 / (1 + delta ** 2)
 
         # Step 4 - Calculate du
         du = np.zeros((3,))
-        du[0] = u_rel[0] / u_xy * u_rel[2] * np.sin(THETA) * np.cos(PHI) - \
-                u_rel[1] / u_xy * u * np.sin(THETA) * np.sin(PHI) - \
-                u_rel[0] * (1 - np.cos(THETA))
-        du[1] = u_rel[1] / u_xy * u_rel[2] * np.sin(THETA) * np.cos(PHI) + \
-                u_rel[0] / u_xy * u * np.sin(PHI) * np.sin(THETA) - \
-                u_rel[1] * (1 - np.cos(THETA))
-        du[2] = -u_xy * np.sin(THETA) * np,cos(PHI) - \
-                u_rel[2] * (1 - np.cos(THETA))
+        du[0] = u_rel[0] / u_xy * u_rel[2] * s_theta * c_phi - \
+                u_rel[1] / u_xy * u * s_theta * s_phi - \
+                u_rel[0] * one_minus_c_theta
+        du[1] = u_rel[1] / u_xy * u_rel[2] * s_theta * c_phi + \
+                u_rel[0] / u_xy * u * s_theta * s_phi - \
+                u_rel[1] * one_minus_c_theta
+        du[2] = -u_xy * s_theta * c_phi - u_rel[2] * one_minus_c_theta
 
         # Step 5 - Update velocities
-        v_1 = v_1 + self.__m_eff / self.__m_1 * du
-        v_2 = v_2 - self.__m_eff / self.__m_2 * du
+        new_v_1 = v_1 + self.__m_eff / self.__m_1 * du
+        new_v_2 = v_2 - self.__m_eff / self.__m_2 * du
+
+        return new_v_1, new_v_2
 
     def single_time_step(self, vel, dt):
         """
@@ -126,13 +123,16 @@ class AbeCoulombCollisionModel(object):
         AbeCoulombCollisionModel.randomise_velocities(vel)
 
         # Step 2 - Calculate post-collisional velocities
-        for i in range(vel.shape[0] / 2):
+        new_vel = np.zeros(vel.shape)
+        for i in range(vel.shape[0] // 2):
             idx = 2 * i
             v_1 = vel[idx, :]
             v_2 = vel[idx + 1, :]
-            AbeCoulombCollisionModel.calculate_post_collision_velocities(v_1, v_2)
+            new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt)
+            new_vel[idx, :] = new_v_1
+            new_vel[idx + 1, :] = new_v_2
 
-        return vel
+        return new_vel
 
     def run_sim(self, vel, dt, final_time):
         """
@@ -149,20 +149,22 @@ class AbeCoulombCollisionModel(object):
             assert vel.shape[0] == self.__n_1 + self.__n_2
         assert vel.shape[1] == 3
 
-        num_steps = ceil(final_time / dt)
+        num_steps = math.ceil(final_time / dt) + 1
         vel_results = np.zeros((vel.shape[0], vel.shape[1], num_steps))
         vel_results[:, :, 0] = vel
-        idx = 1
+        idx = 0
         t = 0.0
-        for t < final_time:
+        print("Starting simulation...")
+        while idx < num_steps:
             vel = self.single_time_step(vel, dt)
 
             vel_results[:, :, idx] = vel
 
             idx += 1
             t += dt
+            print("Timestep {}: t = {}".format(idx, t))
 
-        return vel_results
+        return t, vel_results
 
 
 if __name__ == '__main__':
