@@ -5,9 +5,9 @@ Date: 04/06/2017
 
 from matplotlib import pyplot as plt
 
-from ryutov_model.coax.coupled_coax.coupled_coaxial_liner_implosion import CoupledCoaxialLinerImplosion
-from ryutov_model.coax.coupled_coax.circuit_modules.rl_circuit import RLCircuit
-from ryutov_model.coax.coupled_coax.liner_modules.coaxial_liner_1d import CoaxialLiner1D
+from plasma_physics.pysrc.simulation.ryutov.coupled_coax.coupled_coaxial_liner_implosion import CoupledCoaxialLinerImplosion
+from plasma_physics.pysrc.simulation.ryutov.coupled_coax.circuit_modules.rl_circuit import RLCircuit
+from plasma_physics.pysrc.simulation.ryutov.coupled_coax.liner_modules.coaxial_liner_1d import CoaxialLiner1D
 
 
 def example(plot_implosion=True, plot_circuit=True):

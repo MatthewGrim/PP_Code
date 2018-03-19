@@ -7,7 +7,7 @@ This script contains the circuit modules made use of in the coupled coaxial line
 
 import numpy as np
 
-from Physical_Models.ryutov_model.coax.coupled_coax.circuit_modules.base_circuit import BaseCircuit
+from plasma_physics.pysrc.simulation.ryutov.coupled_coax.circuit_modules.base_circuit import BaseCircuit
 
 
 class RLCircuit(BaseCircuit):

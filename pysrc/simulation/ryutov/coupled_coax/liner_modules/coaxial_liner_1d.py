@@ -7,7 +7,7 @@ This script contains the liner modules made use of in the coupled coaxial liner 
 
 import numpy as np
 
-from Physical_Models.ryutov_model.coax.coupled_coax.liner_modules.base_liner import BaseLiner
+from plasma_physics.pysrc.simulation.ryutov.coupled_coax.liner_modules.base_liner import BaseLiner
 
 
 class CoaxialLiner1D(BaseLiner):
