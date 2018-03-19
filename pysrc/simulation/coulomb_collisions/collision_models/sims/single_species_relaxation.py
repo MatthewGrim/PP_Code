@@ -40,7 +40,7 @@ def run_sim():
     v_K = process.kinetic_loss_stationary_frequency(n * weight, 1.0, 2.0)
     v_P = process.momentum_loss_stationary_frequency(n * weight, 1.0, 2.0)
     collision_time = 1.0 / max([v_K, v_P])
-    dt = 0.01 * collision_time
+    dt = 0.1 * collision_time
     final_time = 2.5 * collision_time
 
     t, v_results = sim.run_sim(velocities, dt, final_time)
