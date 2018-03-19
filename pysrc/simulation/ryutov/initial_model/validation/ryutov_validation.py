@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import scipy.interpolate as interpolate
 
-from Physical_Models.ryutov_model.ideal_thin_liner import integrate_liner_implosion
+from plasma_physics.pysrc.simulation.ryutov.initial_model.ideal_thin_liner import integrate_liner_implosion
 
 
 def get_experimental_data(num_interpolation_pts=400, plot_data=False):
@@ -19,13 +19,13 @@ def get_experimental_data(num_interpolation_pts=400, plot_data=False):
     Get tabulated data recording current pulse and radius profile through time from experiment
     :return:
     """
-    radius = np.loadtxt("ryutov_radius.txt")
-    current = np.loadtxt("ryutov_current_2.txt")
+    radius = np.loadtxt("ryutov_radius.csv")
+    current = np.loadtxt("ryutov_current_2.csv")
 
     r_interpolator = interpolate.interp1d(radius[:, 0], radius[:, 1])
     i_interpolator = interpolate.interp1d(current[:, 0], current[:, 1])
 
-    times = np.linspace(0.01e-7, 1.49e-7, num_interpolation_pts)
+    times = np.linspace(min(radius[:, 0]), max(radius[:, 0]), num_interpolation_pts)
     r_int = r_interpolator(times)
     i_int = i_interpolator(times)
 

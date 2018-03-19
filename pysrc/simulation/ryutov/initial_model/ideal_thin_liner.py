@@ -2,7 +2,10 @@
 Author: Rohan Ramasamy
 Date: 27/05/2017
 
-This script implements a simple model by Ryutov to simulate ideal magnetically driven liner implosions
+This script implements a simple model by Ryutov to simulate ideal magnetically
+ driven liner implosions. This implementation is a first pass attempt and the
+simplest possible, ignoring feedback inductance, and pressure from the imploding
+plasma.
 """
 
 import numpy as np
