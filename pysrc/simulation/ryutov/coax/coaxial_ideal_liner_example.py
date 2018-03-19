@@ -8,8 +8,8 @@ This script builds on the simple ideal liner model to add a second outer liner, 
 import numpy as np
 from matplotlib import pyplot as plt
 
-from Physical_Models.ryutov_model.coax.coaxial_ideal_liner import coaxial_ideal_implosion
-from Physical_Models.ryutov_model.coax.coaxial_ideal_liner import coaxial_ideal_implosion_2d
+from plasma_physics.pysrc.simulation.ryutov.coax.coaxial_ideal_liner import coaxial_ideal_implosion
+from plasma_physics.pysrc.simulation.ryutov.coax.coaxial_ideal_liner import coaxial_ideal_implosion_2d
 
 
 def simple_current(t):
@@ -33,7 +33,7 @@ def oned_example():
     times = np.linspace(0.0, tau, num_pts)
 
     # Get current
-    I = simple_current(times)
+    current = simple_current(times)
 
     # Integrate through implosion
     results = coaxial_ideal_implosion(times, r_inner, R_Inner, simple_current,
@@ -43,7 +43,7 @@ def oned_example():
     # Plot implosion variables
     fig, ax = plt.subplots(2, 3, figsize=(18, 9))
     fig.suptitle("Characteristic curves for an ideal liner implosion")
-    ax[0, 0].plot(times, I)
+    ax[0, 0].plot(times, current)
     ax[0, 0].set_title("Current (A)")
     ax[0, 1].plot(times, r_i, c='r')
     ax[0, 1].plot(times, r_o, c='r', linestyle='--')
@@ -76,7 +76,7 @@ def twod_example():
     times = np.linspace(0.0, tau, num_pts)
 
     # Get current
-    I = simple_current(times)
+    current = simple_current(times)
 
     # Integrate through implosion
     results = coaxial_ideal_implosion_2d(times, r_inner, R_Inner, h, simple_current,
@@ -86,7 +86,7 @@ def twod_example():
     for ts in [t_final]:
         fig, ax = plt.subplots(2, 3, figsize=(18, 9))
         fig.suptitle("Characteristic curves for an ideal liner implosion")
-        ax[0, 0].plot(times, I)
+        ax[0, 0].plot(times, current)
         ax[0, 0].set_title("Current (A)")
         ax[0, 1].plot(h, r_i[ts, :], c='r')
         ax[0, 1].plot(h, r_o[ts, :], c='r', linestyle='--')
@@ -154,7 +154,7 @@ def twod_advanced_example():
     times = np.linspace(0.0, tau, num_pts)
 
     # Get current
-    I = simple_current(times)
+    current = simple_current(times)
 
     # Integrate through implosion
     results = coaxial_ideal_implosion_2d(times, r_inner, R_Inner, h, simple_current,
@@ -164,7 +164,7 @@ def twod_advanced_example():
     for ts in [0, t_final]:
         fig, ax = plt.subplots(2, 3, figsize=(18, 9))
         fig.suptitle("Characteristic curves for an ideal liner implosion t={}".format(times[ts]))
-        ax[0, 0].plot(times, I)
+        ax[0, 0].plot(times, current)
         ax[0, 0].set_title("Current (A)")
         ax[0, 1].plot(h, r_i[ts, :], c='r')
         ax[0, 1].plot(h, r_o[ts, :], c='r', linestyle='--')
