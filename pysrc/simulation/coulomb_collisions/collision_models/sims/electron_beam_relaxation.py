@@ -3,7 +3,10 @@ Author: Rohan Ramasamy
 Date: 19/03/2018
 
 This file contains simulations of different electron beam relaxation processes in electron and ion
- background gases
+background gases. The original test problems is outlined
+in:
+
+Theory of cumulative small angle collisions - Nanbu
 """
 
 import numpy as np
@@ -12,7 +15,6 @@ from matplotlib import pyplot as plt
 from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.abe_collison_model import AbeCoulombCollisionModel
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
-from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 
 
 def get_relaxation_time(p_1, n_background, velocity):
