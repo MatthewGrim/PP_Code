@@ -41,10 +41,10 @@ def run_electron_beam_into_stationary_target_sim():
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(1e31, -PhysicalConstants.electron_charge)
-    n = int(1e4)
+    n = int(1e3)
     beam_velocity = 1.0
 
-    sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2)
+    sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2, freeze_species_2=True)
 
     velocities = np.zeros((2 * n, 3))
     velocities[:n, :] = np.asarray([0.0, 0.0, beam_velocity])
@@ -56,16 +56,17 @@ def run_electron_beam_into_stationary_target_sim():
 
     t, v_results = sim.run_sim(velocities, dt, final_time)
 
-    v_z_estimate = 1.0 - t / tau
-    v_ort_estimate = 2 * t / tau
+    t /= tau
+    v_z_estimate = 1.0 - t
+    v_ort_estimate = 2 * t
 
     fig, ax = plt.subplots(2, figsize=(10, 10))
 
-    ax[0].plot(t / tau, np.mean(v_results[:n, 0, :] ** 2, axis=0), label="<v_x^2>")
-    ax[0].plot(t / tau, np.mean(v_results[:n, 1, :] ** 2, axis=0), label="<v_y^2>")
-    ax[0].plot(t / tau, np.mean(v_results[:n, 2, :], axis=0), label="<v_z>")
-    ax[0].plot(t / tau, v_z_estimate, linestyle="--", label="<v_z_estimate>")
-    ax[0].plot(t / tau, v_ort_estimate, linestyle="--", label="<v_ort_estimate>")
+    ax[0].plot(t, np.mean(v_results[:n, 0, :] ** 2, axis=0), label="<v_x^2>")
+    ax[0].plot(t, np.mean(v_results[:n, 1, :] ** 2, axis=0), label="<v_y^2>")
+    ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0), label="<v_z>")
+    ax[0].plot(t, v_z_estimate, linestyle="--", label="<v_z_estimate>")
+    ax[0].plot(t, v_ort_estimate, linestyle="--", label="<v_ort_estimate>")
     ax[0].set_ylim([0.0, 1.0])
     ax[0].set_xlim([0.0, t[-1]])
     ax[0].legend()
@@ -73,9 +74,9 @@ def run_electron_beam_into_stationary_target_sim():
     ax[0].set_ylabel("Velocities ms-1")
     ax[0].set_title("Beam Velocities")
 
-    ax[1].plot(t / tau, np.mean(v_results[n:, 0, :], axis=0), label="<v_x>")
-    ax[1].plot(t / tau, np.mean(v_results[n:, 1, :], axis=0), label="<v_y>")
-    ax[1].plot(t / tau, np.mean(v_results[n:, 2, :], axis=0), label="<v_z>")
+    ax[1].plot(t, np.mean(v_results[n:, 0, :], axis=0), label="<v_x>")
+    ax[1].plot(t, np.mean(v_results[n:, 1, :], axis=0), label="<v_y>")
+    ax[1].plot(t, np.mean(v_results[n:, 2, :], axis=0), label="<v_z>")
     ax[1].legend()
     ax[1].set_xlabel("Timestep")
     ax[1].set_ylabel("Velocities ms-1")
@@ -91,9 +92,9 @@ def run_electon_beam_into_electron_gas_sim():
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
-    n = int(2e3)
+    n = int(1e4)
 
-    sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2)
+    sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2, freeze_species_2=True)
 
     # Set initial velocity conditions of beam
     beam_velocity = np.sqrt(2 * 100 * PhysicalConstants.electron_charge / p_1.m)
@@ -119,12 +120,13 @@ def run_electon_beam_into_electron_gas_sim():
 
     fig, ax = plt.subplots(2, figsize=(10, 10))
 
-    ax[0].plot(t, np.mean(v_results[:n, 0, :], axis=0) / beam_velocity, label="<v_x^2>")
-    ax[0].plot(t, np.mean(v_results[:n, 1, :], axis=0) / beam_velocity, label="<v_y^2>")
+    ax[0].plot(t, np.mean((v_results[:n, 0, :]) ** 2, axis=0) / beam_velocity ** 2, label="<v_x^2>")
+    ax[0].plot(t, np.mean((v_results[:n, 1, :]) ** 2, axis=0) / beam_velocity ** 2, label="<v_y^2>")
     ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0) / beam_velocity, label="<v_z>")
     ax[0].plot(t, v_z_estimate, linestyle="--", label="<v_z_estimate>")
     ax[0].plot(t, v_ort_estimate, linestyle="--", label="<v_ort_estimate>")
     ax[0].set_xlim([0.0, t[-1]])
+    ax[0].set_ylim([0.0, 1.0])
     ax[0].legend()
     ax[0].set_xlabel("Timestep")
     ax[0].set_ylabel("Velocities ms-1")

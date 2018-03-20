@@ -18,7 +18,7 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 class AbeCoulombCollisionModel(object):
     def __init__(self, n_1, particle_1, particle_weighting=1,
-                 n_2=None, particle_2=None):
+                 n_2=None, particle_2=None, freeze_species_2=False):
         """
         Used to simulate collisions between two particle species
 
@@ -28,6 +28,8 @@ class AbeCoulombCollisionModel(object):
         particle_2: second particle species involved in collisions
         particle_weighting: number of particles per macro-particle
                             in simulation
+        freeze_species_2: boolean to determine if second species is
+                          frozen so that its velocities are not updated
         """
         assert isinstance(n_1, int)
         assert isinstance(particle_weighting, int)
@@ -47,6 +49,7 @@ class AbeCoulombCollisionModel(object):
             self.__q_2 = particle_2.q * particle_weighting
             self.__n_2 = n_2
             self.__m_eff = self.__m_1 * self.__m_2 / (self.__m_1 + self.__m_2)
+            self.__freeze_species_2 = freeze_species_2
         else:
             self.__single_species = True
             self.__m_2 = self.__m_1
@@ -154,7 +157,7 @@ class AbeCoulombCollisionModel(object):
                 v_2 = vel[idx_2, :]
                 new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt)
                 new_vel[idx_1, :] = new_v_1
-                new_vel[idx_2, :] = new_v_2
+                new_vel[idx_2, :] = v_2 if self.__freeze_species_2 else new_v_2
 
         return new_vel
 
