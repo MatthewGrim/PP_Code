@@ -34,7 +34,7 @@ def get_relaxation_time(p_1, n_background, velocity):
     return tau
 
 
-def run_sim():
+def run_electron_beam_into_stationary_target_sim():
     """
     Run simulation of velocity relaxation of electron beam to stationary
     background species
@@ -61,12 +61,69 @@ def run_sim():
 
     fig, ax = plt.subplots(2, figsize=(10, 10))
 
-    ax[0].plot(t, np.mean(v_results[:n, 0, :] ** 2, axis=0), label="<v_x^2>")
-    ax[0].plot(t, np.mean(v_results[:n, 1, :] ** 2, axis=0), label="<v_y^2>")
-    ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0), label="<v_z>")
+    ax[0].plot(t / tau, np.mean(v_results[:n, 0, :] ** 2, axis=0), label="<v_x^2>")
+    ax[0].plot(t / tau, np.mean(v_results[:n, 1, :] ** 2, axis=0), label="<v_y^2>")
+    ax[0].plot(t / tau, np.mean(v_results[:n, 2, :], axis=0), label="<v_z>")
+    ax[0].plot(t / tau, v_z_estimate, linestyle="--", label="<v_z_estimate>")
+    ax[0].plot(t / tau, v_ort_estimate, linestyle="--", label="<v_ort_estimate>")
+    ax[0].set_ylim([0.0, 1.0])
+    ax[0].set_xlim([0.0, t[-1]])
+    ax[0].legend()
+    ax[0].set_xlabel("Timestep")
+    ax[0].set_ylabel("Velocities ms-1")
+    ax[0].set_title("Beam Velocities")
+
+    ax[1].plot(t / tau, np.mean(v_results[n:, 0, :], axis=0), label="<v_x>")
+    ax[1].plot(t / tau, np.mean(v_results[n:, 1, :], axis=0), label="<v_y>")
+    ax[1].plot(t / tau, np.mean(v_results[n:, 2, :], axis=0), label="<v_z>")
+    ax[1].legend()
+    ax[1].set_xlabel("Timestep")
+    ax[1].set_ylabel("Velocities ms-1")
+    ax[1].set_title("Background Velocities")
+
+    plt.show()
+
+
+def run_electon_beam_into_electron_gas_sim():
+    """
+    Run a simulation of an electron beam into a background gas at a
+    given temperature
+    """
+    p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
+    p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
+    n = int(2e3)
+
+    sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2)
+
+    # Set initial velocity conditions of beam
+    beam_velocity = np.sqrt(2 * 100 * PhysicalConstants.electron_charge / p_1.m)
+    velocities = np.zeros((2 * n, 3))
+    velocities[:n, :] = np.asarray([0.0, 0.0, beam_velocity])
+
+    # Set initial velocity conditions of background
+    k_T = 2.0
+    sigma = np.sqrt(2 * k_T * PhysicalConstants.electron_charge / p_1.m)
+    # Not sure if this is correct - taking the 3D velocity magnitude, and dividing by sqrt(3)
+    maxwell_velocities = np.random.normal(loc=0.0, scale=sigma, size=velocities[n:, :].shape) / np.sqrt(3)
+    velocities[n:] = maxwell_velocities
+
+    tau = get_relaxation_time(p_1, n, beam_velocity)
+    dt = 0.01 * tau
+    final_time = 1.0 * tau
+
+    t, v_results = sim.run_sim(velocities, dt, final_time)
+
+    t /= tau
+    v_z_estimate = 1.0 - 2 * t
+    v_ort_estimate = 1.98 * t
+
+    fig, ax = plt.subplots(2, figsize=(10, 10))
+
+    ax[0].plot(t, np.mean(v_results[:n, 0, :], axis=0) / beam_velocity, label="<v_x^2>")
+    ax[0].plot(t, np.mean(v_results[:n, 1, :], axis=0) / beam_velocity, label="<v_y^2>")
+    ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0) / beam_velocity, label="<v_z>")
     ax[0].plot(t, v_z_estimate, linestyle="--", label="<v_z_estimate>")
     ax[0].plot(t, v_ort_estimate, linestyle="--", label="<v_ort_estimate>")
-    ax[0].set_ylim([0.0, 1.0])
     ax[0].set_xlim([0.0, t[-1]])
     ax[0].legend()
     ax[0].set_xlabel("Timestep")
@@ -76,6 +133,7 @@ def run_sim():
     ax[1].plot(t, np.mean(v_results[n:, 0, :], axis=0), label="<v_x>")
     ax[1].plot(t, np.mean(v_results[n:, 1, :], axis=0), label="<v_y>")
     ax[1].plot(t, np.mean(v_results[n:, 2, :], axis=0), label="<v_z>")
+    ax[1].set_xlim([0.0, t[-1]])
     ax[1].legend()
     ax[1].set_xlabel("Timestep")
     ax[1].set_ylabel("Velocities ms-1")
@@ -85,4 +143,5 @@ def run_sim():
 
 
 if __name__ == '__main__':
-    run_sim()
+    # run_electron_beam_into_stationary_target_sim()
+    run_electon_beam_into_electron_gas_sim()

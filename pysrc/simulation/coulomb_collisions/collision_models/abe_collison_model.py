@@ -191,6 +191,7 @@ class AbeCoulombCollisionModel(object):
             times[idx] = t
 
             idx += 1
+        print("Simulation Complete!")
 
         return times, vel_results
 
