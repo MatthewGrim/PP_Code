@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.abe_collison_model import AbeCoulombCollisionModel
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
+from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 
 
 def get_relaxation_time(p_1, n_background, velocity):
@@ -92,7 +93,7 @@ def run_electon_beam_into_electron_gas_sim():
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
-    n = int(1e4)
+    n = int(1e3)
 
     sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2, freeze_species_2=True)
 
