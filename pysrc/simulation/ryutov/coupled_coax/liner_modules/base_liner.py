@@ -20,6 +20,7 @@ class BaseLiner(object):
         :return:
         """
         self.R = np.zeros(times.shape)
+        self.R_dot = np.zeros(times.shape)
         self.L = np.zeros(times.shape)
         self.L_dot = np.zeros(times.shape)
 

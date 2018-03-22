@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from plasma_physics.pysrc.simulation.ryutov.coupled_coax.coupled_coaxial_liner_implosion import CoupledCoaxialLinerImplosion
 from plasma_physics.pysrc.simulation.ryutov.coupled_coax.circuit_modules.fc_circuit import FCCircuit
 from plasma_physics.pysrc.simulation.ryutov.coupled_coax.liner_modules.coaxial_liner_1d import CoaxialLiner1D
+from plasma_physics.pysrc.simulation.ryutov.coupled_coax.eos_modules.vacuum_eos import VacuumEOS
 
 
 def example(plot_implosion=True, plot_circuit=True):
@@ -15,13 +16,14 @@ def example(plot_implosion=True, plot_circuit=True):
     Run a simple 1D example simulation
     :return:
     """
-    sim = CoupledCoaxialLinerImplosion(FCCircuit, CoaxialLiner1D,
+    sim = CoupledCoaxialLinerImplosion(FCCircuit, CoaxialLiner1D, VacuumEOS,
                                        final_time=6e-6, time_resolution=int(1e5),
                                        liner_density=6095.0, liner_resistivity=2700e-9,
                                        r_inner=2e-2, R_Inner=2.5e-2, R_Outer=4.0e-2, h=0.3,
-                                       C=1313e-6, V=120e3, R_circ=0.0, L_circ=3.75e-9)
+                                       C=1313e-6, V=120e3, R_circ=0.0, L_circ=3.75e-9,
+                                       liner_shape=1)
 
-    circuit, liner = sim.run_simulation(decoupled=True)
+    circuit, liner, eos = sim.run_simulation(decoupled=True)
 
     times = sim.times
     v_gen, v_load, q_gen, I_1, I_1_dot, I_2, I_2_dot = circuit.results()

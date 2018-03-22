@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from plasma_physics.pysrc.simulation.ryutov.coupled_coax.coupled_coaxial_liner_implosion import CoupledCoaxialLinerImplosion
 from plasma_physics.pysrc.simulation.ryutov.coupled_coax.circuit_modules.rl_circuit import RLCircuit
 from plasma_physics.pysrc.simulation.ryutov.coupled_coax.liner_modules.coaxial_liner_2d import CoaxialLiner2D
+from plasma_physics.pysrc.simulation.ryutov.coupled_coax.eos_modules.vacuum_eos import VacuumEOS
 
 
 def example(plot_implosion=True, plot_circuit=True):
@@ -21,10 +22,11 @@ def example(plot_implosion=True, plot_circuit=True):
     r_inner = np.ones(num_h_pts) * 2e-2
     R_Inner = np.ones(num_h_pts) * 2.5e-2
 
-    sim = CoupledCoaxialLinerImplosion(RLCircuit, CoaxialLiner2D,
+    sim = CoupledCoaxialLinerImplosion(RLCircuit, CoaxialLiner2D, VacuumEOS,
                                        final_time=5e-6,
                                        h=h, r_inner=r_inner, R_Inner=R_Inner,
-                                       C=1313e-6, V=120e3, L_circ=3.75e-9)
+                                       C=1313e-6, V=120e3, L_circ=3.75e-9,
+                                       liner_shape=r_inner.shape)
 
     circuit, liner = sim.run_simulation(decoupled=False)
     times = sim.times

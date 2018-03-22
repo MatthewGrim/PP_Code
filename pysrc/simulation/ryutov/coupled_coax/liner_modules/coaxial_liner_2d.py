@@ -16,6 +16,7 @@ class CoaxialLiner2D(BaseLiner):
     2D Liner module that considers a specified length of liner. The radius of the liner is allowed to vary along the
     length
     """
+
     def __init__(self, times, **kwargs):
         """
         Constructor for 2D coaxial liner module
@@ -124,10 +125,10 @@ class CoaxialLiner2D(BaseLiner):
         """
         if i == self.number_of_ts or np.all(self.r_i[i + 1] > self.minimum_radius):
             self.final_time = i
-            return self.R[i], self.L[i], self.L_dot[i], False
+            return self.R[i], self.L[i], self.L_dot[i], self.r_i[i, :], self.v[i, :], False
         else:
             self.final_time = i
-            return self.R[i], self.L[i], self.L_dot[i], True
+            return self.R[i], self.L[i], self.L_dot[i], self.r_i[i, :], self.v[i, :], True
 
     def results(self):
         """

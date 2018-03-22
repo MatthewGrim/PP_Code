@@ -10,7 +10,7 @@ import numpy as np
 
 class CoupledCoaxialLinerImplosion(object):
 
-    def __init__(self, circuit_model, liner_model, **kwargs):
+    def __init__(self, circuit_model, liner_model, eos_model, **kwargs):
         """
         Constructor for the overall simulation class. The simulation class contains a coaxial liner module and a
         circuit model that are coupled together
@@ -24,6 +24,9 @@ class CoupledCoaxialLinerImplosion(object):
 
         # Initialise circuit model
         self.circuit_model = circuit_model(self._times, **kwargs)
+
+        # Initialise eos model
+        self.eos_model = eos_model(self._times, **kwargs)
 
         # Initialise liner model
         self.liner_model = liner_model(self._times, **kwargs)
@@ -41,6 +44,8 @@ class CoupledCoaxialLinerImplosion(object):
         R = 0.0
         L = 0.0
         L_dot = 0.0
+        r = 0.0
+        v = 0.0
         for ts, t in enumerate(self._times):
             if decoupled:
                 R = 0.0
@@ -48,10 +53,14 @@ class CoupledCoaxialLinerImplosion(object):
                 L_dot = 0.0
 
             # Run circuit model to get input current
-            I = self.circuit_model.evolve_timestep(ts, t, R, L, L_dot)
+            current = self.circuit_model.evolve_timestep(ts, t, R, L, L_dot)
 
-            # Run liner implosion to get feedback resistance, inductance and change in inductance
-            R, L, L_dot, implosion_complete = self.liner_model.evolve_timestep(ts, I)
+            # Run eos model to get feedback pressure
+            p_feedback = self.eos_model.evolve_timestep(ts, r, v)
+
+            # Run liner implosion to get feedback resistance, inductance, change in inductance
+            # liner radius, and velocity
+            R, L, L_dot, r, v, implosion_complete = self.liner_model.evolve_timestep(ts, current)
 
             # If liner inner radius is within the convergence ratio specified - break
             if implosion_complete:

@@ -146,9 +146,9 @@ class CoaxialLiner1D(BaseLiner):
         :return:
         """
         if i == self.number_of_ts or self.r_i[i] > self.minimum_radius:
-            return self.R[i], self.L[i], self.L_dot[i], False
+            return self.R[i], self.L[i], self.L_dot[i], self.r_i[i], self.v[i], False
         else:
-            return self.R[i], self.L[i], self.L_dot[i], True
+            return self.R[i], self.L[i], self.L_dot[i], self.r_i[i], self.v[i], True
 
     def results(self):
         """

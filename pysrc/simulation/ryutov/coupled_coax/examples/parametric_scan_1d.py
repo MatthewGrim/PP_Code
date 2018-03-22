@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 from plasma_physics.pysrc.simulation.ryutov.coupled_coax.coupled_coaxial_liner_implosion import CoupledCoaxialLinerImplosion
 from plasma_physics.pysrc.simulation.ryutov.coupled_coax.circuit_modules.rl_circuit import RLCircuit
 from plasma_physics.pysrc.simulation.ryutov.coupled_coax.liner_modules.coaxial_liner_1d import CoaxialLiner1D
+from plasma_physics.pysrc.simulation.ryutov.coupled_coax.eos_modules.vacuum_eos import VacuumEOS
 
 
 def run_sims(plot_implosion=True, plot_circuit=True):
@@ -20,11 +21,12 @@ def run_sims(plot_implosion=True, plot_circuit=True):
     voltages = np.linspace(100, 200, 11) * 1e3
 
     for V in voltages:
-        sim = CoupledCoaxialLinerImplosion(RLCircuit, CoaxialLiner1D,
+        sim = CoupledCoaxialLinerImplosion(RLCircuit, CoaxialLiner1D, VacuumEOS,
                                            final_time=5e-6,
                                            liner_density=6095.0, liner_resistivity=270e-9,
                                            r_inner=2e-2, R_Inner=2.5e-2, R_Outer=4.0e-2, h=0.3,
-                                           C=1313e-6, V=V, L_circ=3.75e-9)
+                                           C=1313e-6, V=V, L_circ=3.75e-9,
+                                           liner_shape=1)
 
         circuit, liner = sim.run_simulation(decoupled=False)
 
