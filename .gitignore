@@ -7,6 +7,7 @@ node_modules
 **/results/*
 
 # --- File types ---
+*.DS_Store
 *.sublime*
 *.json
 *.png
