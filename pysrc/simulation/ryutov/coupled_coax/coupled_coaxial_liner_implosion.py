@@ -60,7 +60,7 @@ class CoupledCoaxialLinerImplosion(object):
 
             # Run liner implosion to get feedback resistance, inductance, change in inductance
             # liner radius, and velocity
-            R, L, L_dot, r, v, implosion_complete = self.liner_model.evolve_timestep(ts, current)
+            R, L, L_dot, r, v, implosion_complete = self.liner_model.evolve_timestep(ts, current, p_feedback)
 
             # If liner inner radius is within the convergence ratio specified - break
             if implosion_complete:

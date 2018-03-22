@@ -44,3 +44,10 @@ class VacuumEOS(BaseEOS):
         Return the results of the timestep
         """
         return self.p_feedback
+
+    def results(self):
+        """
+        Return the result arrays from the simulation
+        :return:
+        """
+        pass

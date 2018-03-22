@@ -71,7 +71,7 @@ class CoaxialLiner2D(BaseLiner):
         self.R_I[0, :] = R_Inner
         self.R_I[1, :] = R_Inner
 
-    def evolve_timestep(self, ts, I):
+    def evolve_timestep(self, ts, I, p_feedback):
         """
             Function to evolve simulation by a single timestep
             """
@@ -96,7 +96,7 @@ class CoaxialLiner2D(BaseLiner):
             return self.get_timestep_result(ts)
 
         # Inner Liner motion
-        self.r_o[ts + 1, :] = 2 * self.r_o[ts, :] - self.r_o[ts - 1, :] - (self.dt ** 2 * self.p_const_inner * I ** 2) / self.r_o[ts, :]
+        self.r_o[ts + 1, :] = 2 * self.r_o[ts, :] - self.r_o[ts - 1, :] - (self.dt ** 2 * (self.p_const_inner * I ** 2 - p_feedback)) / self.r_o[ts, :]
         self.v[ts, :] = (self.r_o[ts + 1, :] - self.r_o[ts - 1, :]) / (2 * self.dt)
         self.e_kin[ts, :] = 0.5 * self.rho_inner * self.v[ts, :] ** 2
 

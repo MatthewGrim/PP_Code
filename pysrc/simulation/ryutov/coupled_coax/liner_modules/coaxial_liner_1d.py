@@ -78,7 +78,7 @@ class CoaxialLiner1D(BaseLiner):
         self.R_O[0] = R_Outer
         self.R_O[1] = R_Outer
 
-    def evolve_timestep(self, i, I):
+    def evolve_timestep(self, i, I, p_feedback):
         """
         Function to evolve simulation by a single time step
         :return:
@@ -105,7 +105,7 @@ class CoaxialLiner1D(BaseLiner):
             return self.get_timestep_result(i)
 
         # Inner liner motion
-        self.r_o[i + 1] = 2 * self.r_o[i] - self.r_o[i - 1] - (self.dt ** 2 * self.p_const_inner * I ** 2) / self.r_o[i]
+        self.r_o[i + 1] = 2 * self.r_o[i] - self.r_o[i - 1] - (self.dt ** 2 * (self.p_const_inner * I ** 2 - p_feedback)) / self.r_o[i]
         self.v[i] = (self.r_o[i + 1] - self.r_o[i - 1]) / (2 * self.dt)
         self.e_kin[i] = 0.5 * self.m_inner * self.v[i] ** 2
 
@@ -116,7 +116,7 @@ class CoaxialLiner1D(BaseLiner):
 
         # Integrate up parameters from acceleration to radii. This does not seem to improve accuracy so I've stuck to
         # using the second differential
-        # self.v[i] = self.v[i - 1] - (self.dt * self.p_const_inner * I ** 2) / self.r_o[i - 1]
+        # self.v[i] = self.v[i - 1] - (self.dt * (self.p_const_inner * I ** 2 - p_feedback)) / self.r_o[i - 1]
         # self.r_o[i] = self.r_o[i - 1] + self.dt * self.v[i]
         # self.e_kin[i] = 0.5 * self.m_inner * self.v[i] ** 2
         #
