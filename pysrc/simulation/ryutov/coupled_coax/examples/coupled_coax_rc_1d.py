@@ -17,23 +17,25 @@ def example(use_vacuum, plot_implosion=True, plot_circuit=True):
     Run a simple 1D example simulation
     :return:
     """
+    final_time = 4e-6
+    time_res = 100000
     if use_vacuum:
         sim = CoupledCoaxialLinerImplosion(RLCircuit, CoaxialLiner1D, VacuumEOS,
-                                           final_time=5e-6,
+                                           final_time=final_time, time_resolution=time_res,
                                            liner_density=2700.0, liner_resistivity=0.0, convergence_ratio=0.1,
                                            r_inner=1.0e-2, r_outer=1.1e-2, R_Inner=1.4e-2, R_Outer=3.0e-2, h=0.3,
                                            C=1313e-6, V=120e3, R_circ=0.0, L_circ=3.75e-9,
                                            liner_shape=1)
     else:
         sim = CoupledCoaxialLinerImplosion(RLCircuit, CoaxialLiner1D, IdealEOS1D,
-                                           final_time=4e-6, time_resolution=100000,
+                                           final_time=final_time, time_resolution=time_res,
                                            p_0=1e5, rho_0=0.213, molecular_mass=3,
                                            liner_density=2700.0, liner_resistivity=0.0, convergence_ratio=None,
                                            r_inner=1.0e-2, r_outer=1.1e-2, R_Inner=1.4e-2, R_Outer=3.0e-2, h=0.3,
                                            C=1313e-6, V=120e3, R_circ=0.0, L_circ=3.75e-9,
                                            liner_shape=1)
 
-    circuit, liner, eos = sim.run_simulation(decoupled=False)
+    circuit, liner, eos = sim.run_simulation()
 
     times = sim.times
     v_gen, q_gen, I, I_dot = circuit.results()
@@ -60,6 +62,7 @@ def example(use_vacuum, plot_implosion=True, plot_circuit=True):
         ax[1, 1].set_title("Kinetic Energy (J)")
         ax[1, 2].plot(times, r_o - r_i)
         ax[1, 2].set_title("Inner liner difference in radius (m)")
+        plt.tight_layout()
         plt.show()
 
     # Plot circuit variables
@@ -77,6 +80,7 @@ def example(use_vacuum, plot_implosion=True, plot_circuit=True):
         ax[0, 2].set_title("Inductance (H)")
         ax[1, 2].plot(times, L_dot)
         ax[1, 2].set_title("Change in Inductance (Hs-1)")
+        plt.tight_layout()
         plt.show()
 
 

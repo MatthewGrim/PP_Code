@@ -49,8 +49,8 @@ class IdealEOS1D(BaseEOS):
         :param v:
         :return:
         """
-        rho_prev = self.rho_0 if ts == 0 else self.rho[ts - 1]
-        p_shock = (self.gamma + 1) / 2.0 * rho_prev * v ** 2
+        # rho_prev = self.rho_0 if ts == 0 else self.rho[ts - 1]
+        # p_shock = (self.gamma + 1) / 2.0 * rho_prev * v ** 2 if v < 0.0 else 0.0
         p_isentropic = self.p_0 * (self.r_0 / r) ** (2 * self.gamma)
 
         # if p_shock > p_isentropic:

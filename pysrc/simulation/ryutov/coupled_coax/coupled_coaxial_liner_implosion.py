@@ -51,16 +51,18 @@ class CoupledCoaxialLinerImplosion(object):
         for ts, t in enumerate(self._times):
             print("Timestep: {}, {}".format(ts, t))
 
+            # Run eos model to get feedback pressure
+            p_feedback = self.eos_model.evolve_timestep(ts, r, v)
+
+            # Decouple models if specified
             if decoupled:
                 R = 0.0
                 L = 0.0
                 L_dot = 0.0
+                p_feedback = 0.0
 
             # Run circuit model to get input current
             current = self.circuit_model.evolve_timestep(ts, t, R, L, L_dot)
-
-            # Run eos model to get feedback pressure
-            p_feedback = self.eos_model.evolve_timestep(ts, r, v)
 
             # Run liner implosion to get feedback resistance, inductance, change in inductance
             # liner radius, and velocity

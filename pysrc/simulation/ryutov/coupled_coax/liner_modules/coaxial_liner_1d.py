@@ -130,9 +130,8 @@ class CoaxialLiner1D(BaseLiner):
         self.r_i[i + 1] = np.sqrt(self.r_o[i + 1] ** 2 - self.m_inner / (self.liner_density * np.pi * self.h))
         self.R_O[i + 1] = np.sqrt(self.m_outer / (self.liner_density * np.pi * self.h) + self.R_I[i + 1] ** 2)
         assert self.r_i[i + 1] < self.r_o[i + 1], "{}, {}".format(self.r_i[i + 1], self.r_o[i + 1])
-        assert self.r_o[i + 1] < self.R_I[i + 1], "{}, {}".format(self.r_i[i + 1], self.R_I[i + 1])
+        assert self.r_o[i + 1] < self.R_I[i + 1], "{}, {}".format(self.r_o[i + 1], self.R_I[i + 1])
         assert self.R_I[i + 1] < self.R_O[i + 1], "{}, {}".format(self.R_I[i + 1], self.R_O[i + 1])
-
 
         # If the convergence ratio is surpassed, end the simulation
         if self.minimum_radius is not None and self.r_i[i] <= self.minimum_radius:
