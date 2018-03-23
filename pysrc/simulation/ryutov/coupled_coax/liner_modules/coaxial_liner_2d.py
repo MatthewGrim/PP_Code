@@ -39,7 +39,7 @@ class CoaxialLiner2D(BaseLiner):
         assert np.all(R_Inner < R_Outer)
 
         # Get minimum radius of simulation
-        convergence_ratio = kwargs.get("minimum_radius", 0.1)
+        convergence_ratio = kwargs.get("convergence_ratio", 0.1)
         self.minimum_radius = convergence_ratio * r_inner
 
         # Get shell densities - kgm-1

@@ -49,16 +49,16 @@ class IdealEOS1D(BaseEOS):
         :param v:
         :return:
         """
-        p_shock = (self.gamma + 1) / 2.0 * self.rho[i] * v ** 2
+        rho_prev = self.rho_0 if ts == 0 else self.rho[ts - 1]
+        p_shock = (self.gamma + 1) / 2.0 * rho_prev * v ** 2
         p_isentropic = self.p_0 * (self.r_0 / r) ** (2 * self.gamma)
 
-        if p_shock > p_isentropic:
-            rho_prev = self.rho_0 if ts == 0 else self.rho[ts - 1]
-            self.rho[ts] = (self.gamma + 1) / (self.gamma - 1) * rho_prev
-            self.p[ts] = p_shock
-        else:
-            self.rho[ts] = self.rho_0 * (self.r_0 / r) ** 2
-            self.p[ts] = p_isentropic
+        # if p_shock > p_isentropic:
+        #     self.rho[ts] = (self.gamma + 1) / (self.gamma - 1) * rho_prev
+        #     self.p[ts] = p_shock
+        # else:
+        self.rho[ts] = self.rho_0 * (self.r_0 / r) ** 2
+        self.p[ts] = p_isentropic
 
         return self.get_timestep_results(ts)
 

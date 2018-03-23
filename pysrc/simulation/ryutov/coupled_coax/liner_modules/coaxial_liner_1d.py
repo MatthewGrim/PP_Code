@@ -15,6 +15,7 @@ class CoaxialLiner1D(BaseLiner):
     Simple liner module, which assumes that the length of the liner is 1m. As a result the inductance per metre, and
     density per metre are valid values for the inductance and mass
     """
+
     def __init__(self, times, **kwargs):
         """
         Constructor for 1D coaxial liner module
@@ -38,8 +39,9 @@ class CoaxialLiner1D(BaseLiner):
         assert r_inner < r_outer < R_Inner < R_Outer
 
         # Get minimum radius of simulation
-        convergence_ratio = kwargs.get("minimum_radius", 0.1)
-        self.minimum_radius = convergence_ratio * r_inner
+        convergence_ratio = kwargs.get("convergence_ratio", 0.1)
+        assert isinstance(convergence_ratio, float) or convergence_ratio is None
+        self.minimum_radius = None if convergence_ratio is None else convergence_ratio * r_inner
 
         # Get shell densities - kgm-1
         self.liner_resistivity = kwargs.get("liner_resistivity", 25e-9)
@@ -127,10 +129,13 @@ class CoaxialLiner1D(BaseLiner):
         # Get other radii and check they are still geometrically consistent
         self.r_i[i + 1] = np.sqrt(self.r_o[i + 1] ** 2 - self.m_inner / (self.liner_density * np.pi * self.h))
         self.R_O[i + 1] = np.sqrt(self.m_outer / (self.liner_density * np.pi * self.h) + self.R_I[i + 1] ** 2)
-        assert self.r_i[i + 1] < self.r_o[i + 1] < self.R_I[i + 1] < self.R_O[i + 1]
+        assert self.r_i[i + 1] < self.r_o[i + 1], "{}, {}".format(self.r_i[i + 1], self.r_o[i + 1])
+        assert self.r_o[i + 1] < self.R_I[i + 1], "{}, {}".format(self.r_i[i + 1], self.R_I[i + 1])
+        assert self.R_I[i + 1] < self.R_O[i + 1], "{}, {}".format(self.R_I[i + 1], self.R_O[i + 1])
+
 
         # If the convergence ratio is surpassed, end the simulation
-        if self.r_i[i] <= self.minimum_radius:
+        if self.minimum_radius is not None and self.r_i[i] <= self.minimum_radius:
             self.r_i[i] = self.minimum_radius
             self.r_o[i] = self.r_o[i]
             self.v[i] = self.v[i - 1]
@@ -145,7 +150,9 @@ class CoaxialLiner1D(BaseLiner):
         :param i:
         :return:
         """
-        if i == self.number_of_ts or self.r_i[i] > self.minimum_radius:
+        if i == self.number_of_ts:
+            return self.R[i], self.L[i], self.L_dot[i], self.r_i[i], self.v[i], False
+        elif self.minimum_radius is None or self.r_i[i] > self.minimum_radius:
             return self.R[i], self.L[i], self.L_dot[i], self.r_i[i], self.v[i], False
         else:
             return self.R[i], self.L[i], self.L_dot[i], self.r_i[i], self.v[i], True

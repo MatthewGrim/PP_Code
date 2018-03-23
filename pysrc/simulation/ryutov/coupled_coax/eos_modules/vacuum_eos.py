@@ -37,7 +37,7 @@ class VacuumEOS(BaseEOS):
         """
         Function to evolve simulation by a single timestep
         """
-        self.get_timestep_results(ts)
+        return self.get_timestep_results(ts)
 
     def get_timestep_results(self, i):
         """

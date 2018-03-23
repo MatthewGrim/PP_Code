@@ -44,9 +44,13 @@ class CoupledCoaxialLinerImplosion(object):
         R = 0.0
         L = 0.0
         L_dot = 0.0
-        r = 0.0
+        r = self.eos_model.r_0
         v = 0.0
+        p_feedback = 0.0
+        print("Starting simulation...")
         for ts, t in enumerate(self._times):
+            print("Timestep: {}, {}".format(ts, t))
+
             if decoupled:
                 R = 0.0
                 L = 0.0
@@ -65,5 +69,6 @@ class CoupledCoaxialLinerImplosion(object):
             # If liner inner radius is within the convergence ratio specified - break
             if implosion_complete:
                 break
+        print("Simulation Complete!")
 
-        return self.circuit_model, self.liner_model
+        return self.circuit_model, self.liner_model, self.eos_model
