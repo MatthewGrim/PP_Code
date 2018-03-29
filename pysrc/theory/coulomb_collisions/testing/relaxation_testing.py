@@ -79,10 +79,14 @@ def compare_product_and_reactant_energy_loss_rates():
     impact_parameter_ratio = 1.0  # Is not necessary for this analysis
     number_density = np.logspace(18, 30, 100)
     temperature = 20e3 * UnitConversions.eV_to_K
-    alpha_frequency = np.zeros(number_density.shape)
-    deuterium_frequency = np.zeros(number_density.shape)
-    alpha_loss_rate = np.zeros(number_density.shape)
-    deuterium_loss_rate = np.zeros(number_density.shape)
+    deuterium_kinetic_frequency = np.zeros(number_density.shape)
+    deuterium_energy_loss_rates = np.zeros(number_density.shape)
+    deuterium_momentum_frequency = np.zeros(number_density.shape)
+    deuterium_momentum_loss_rates = np.zeros(number_density.shape)
+    alpha_kinetic_frequency = np.zeros(number_density.shape)
+    alpha_energy_loss_rates = np.zeros(number_density.shape)
+    alpha_momentum_frequency = np.zeros(number_density.shape)
+    alpha_momentum_loss_rates = np.zeros(number_density.shape)
     for i, n in enumerate(number_density):
         # Get reactant collision frequency and energy loss rate
         reactant_collision = CoulombCollision(deuterium, electron,
@@ -90,7 +94,9 @@ def compare_product_and_reactant_energy_loss_rates():
                                               v_deuterium)
         reactant_relaxation = RelaxationProcess(reactant_collision)
         reactant_v_K = reactant_relaxation.kinetic_loss_stationary_frequency(n, temperature, v_deuterium)
-        reactant_loss_rate = reactant_relaxation.energy_loss_with_distance(n, temperature, v_deuterium)
+        reactant_energy_loss_rate = reactant_relaxation.energy_loss_with_distance(n, temperature, v_deuterium)
+        reactant_v_P = reactant_relaxation.momentum_loss_stationary_frequency(n, temperature, v_deuterium)
+        reactant_momentum_loss_rate = reactant_v_P * deuterium.m
 
         # Get product collision frequency and energy loss rate
         product_collision = CoulombCollision(alpha, electron,
@@ -98,13 +104,20 @@ def compare_product_and_reactant_energy_loss_rates():
                                              v_alpha)
         product_relaxation = RelaxationProcess(product_collision)
         product_v_K = product_relaxation.kinetic_loss_stationary_frequency(n, temperature, v_alpha)
-        product_loss_rate = product_relaxation.energy_loss_with_distance(n, temperature, v_alpha)
+        product_energy_loss_rate = product_relaxation.energy_loss_with_distance(n, temperature, v_alpha)
+        product_v_P = product_relaxation.momentum_loss_stationary_frequency(n, temperature, v_alpha)
+        product_momentum_loss_rate = product_v_P * alpha.m
 
         # Store results
-        deuterium_loss_rate[i] = reactant_loss_rate
-        deuterium_frequency[i] = reactant_v_K
-        alpha_loss_rate[i] = product_loss_rate
-        alpha_frequency[i] = product_v_K
+        deuterium_energy_loss_rates[i] = reactant_energy_loss_rate
+        deuterium_kinetic_frequency[i] = reactant_v_K
+        deuterium_momentum_loss_rates[i] = reactant_momentum_loss_rate
+        deuterium_momentum_frequency[i] = reactant_v_P
+
+        alpha_energy_loss_rates[i] = product_energy_loss_rate
+        alpha_kinetic_frequency[i] = product_v_K
+        alpha_momentum_loss_rates[i] = product_momentum_loss_rate
+        alpha_momentum_frequency[i] = product_v_P
 
     v_electron = np.sqrt(2 * PhysicalConstants.boltzmann_constant * temperature / electron.m)
 
@@ -112,32 +125,72 @@ def compare_product_and_reactant_energy_loss_rates():
     print("Alpha-Electron Velocity Ratio: {}".format(v_alpha / v_electron))
     print("Deuterium-Electron Velocity Ratio: {}".format(v_deuterium / v_electron))
 
-    fig, ax = plt.subplots(3, figsize=(10, 10))
+    fig, ax = plt.subplots(4, 2, figsize=(15, 10))
 
-    ax[0].loglog(number_density, deuterium_frequency, label="Reactant Beam")
-    ax[0].loglog(number_density, alpha_frequency, label="Product Beam")
-    ax[0].set_xlabel("Number density (m-3)")
-    ax[0].set_ylabel("Collision Frequency (s-1)")
-    ax[0].set_title("Beam Collision Frequencies")
-    ax[0].legend()
+    # energy results
+    ax[0, 0].loglog(number_density, deuterium_kinetic_frequency, label="Reactant Beam")
+    ax[0, 0].loglog(number_density, alpha_kinetic_frequency, label="Product Beam")
+    ax[0, 0].set_xlabel("Number density (m-3)")
+    ax[0, 0].set_ylabel("Energy Collision Frequency (s-1)")
+    ax[0, 0].set_title("Energy Collision Frequencies")
+    ax[0, 0].legend()
 
-    ax[1].loglog(number_density, deuterium_loss_rate, label="Reactant Beam")
-    ax[1].loglog(number_density, alpha_loss_rate, label="Product Beam")
-    ax[1].set_xlabel("Number density (m-3)")
-    ax[1].set_ylabel("Energy Loss Rate per metre (Jm-1)")
-    ax[1].set_title("Energy Loss Rates per metre")
-    ax[1].legend()
+    ax[1, 0].loglog(number_density, deuterium_energy_loss_rates, label="Reactant Beam")
+    ax[1, 0].loglog(number_density, alpha_energy_loss_rates, label="Product Beam")
+    ax[1, 0].set_xlabel("Number density (m-3)")
+    ax[1, 0].set_ylabel("Energy Loss Rate per metre (Jm-1)")
+    ax[1, 0].set_title("Energy Loss Rates per metre")
+    ax[1, 0].legend()
 
-    ax[2].loglog(number_density, deuterium_loss_rate / e_deuterium, label="Reactant Beam")
-    ax[2].loglog(number_density, alpha_loss_rate / e_alpha, label="Product Beam")
-    ax[2].axhline(0.1, linestyle="--")
-    ax[2].set_xlabel("Number density (m-3)")
-    ax[2].set_ylabel("Normalised Kinetic Loss Rate (m-1)")
-    ax[2].set_title("Normalised Kinetic Loss Rate")
-    ax[2].legend()
+    ax[2, 0].loglog(number_density, deuterium_energy_loss_rates / e_deuterium, label="Reactant Beam")
+    ax[2, 0].loglog(number_density, alpha_energy_loss_rates / e_alpha, label="Product Beam")
+    ax[2, 0].axhline(0.1, linestyle="--")
+    ax[2, 0].set_xlabel("Number density (m-3)")
+    ax[2, 0].set_ylabel("Normalised Kinetic Loss Rate (m-1)")
+    ax[2, 0].set_title("Normalised Kinetic Loss Rate")
+    ax[2, 0].legend()
 
-    plt.title("Comparison of product and reactant beam loss rates due to electron collisions")
-    plt.tight_layout()
+    ax[3, 0].loglog(number_density, e_deuterium / deuterium_energy_loss_rates, label="Reactant Beam")
+    ax[3, 0].loglog(number_density, e_alpha / alpha_energy_loss_rates, label="Product Beam")
+    ax[3, 0].set_xlabel("Number density (m-3)")
+    ax[3, 0].set_ylabel("Distance traveller (m)")
+    ax[3, 0].set_title("Distance travelled")
+    ax[3, 0].legend()
+
+    # momentum results
+    ax[0, 1].loglog(number_density, deuterium_momentum_frequency, label="Reactant Beam")
+    ax[0, 1].loglog(number_density, alpha_momentum_frequency, label="Product Beam")
+    ax[0, 1].set_xlabel("Number density (m-3)")
+    ax[0, 1].set_ylabel("Momentum Collision Frequency (s-1)")
+    ax[0, 1].set_title("Momentum Collision Frequencies")
+    ax[0, 1].legend()
+
+    ax[1, 1].loglog(number_density, deuterium_momentum_loss_rates, label="Reactant Beam")
+    ax[1, 1].loglog(number_density, alpha_momentum_loss_rates, label="Product Beam")
+    ax[1, 1].set_xlabel("Number density (m-3)")
+    ax[1, 1].set_ylabel("Momentum Loss Rate per metre (Jm-1)")
+    ax[1, 1].set_title("Momentum Loss Rates per metre")
+    ax[1, 1].legend()
+
+    deuterium_momentum = deuterium.m * v_deuterium
+    alpha_momentum = alpha.m * v_alpha
+    ax[2, 1].loglog(number_density, deuterium_momentum_loss_rates / deuterium_momentum, label="Reactant Beam")
+    ax[2, 1].loglog(number_density, alpha_momentum_loss_rates / alpha_momentum, label="Product Beam")
+    ax[2, 1].axhline(0.1, linestyle="--")
+    ax[2, 1].set_xlabel("Number density (m-3)")
+    ax[2, 1].set_ylabel("Normalised Momentum Loss Rate (m-1)")
+    ax[2, 1].set_title("Normalised Momentum Loss Rate")
+    ax[2, 1].legend()
+
+    ax[3, 1].loglog(number_density, deuterium_momentum / deuterium_momentum_loss_rates, label="Reactant Beam")
+    ax[3, 1].loglog(number_density, alpha_momentum / alpha_momentum_loss_rates, label="Product Beam")
+    ax[3, 1].set_xlabel("Number density (m-3)")
+    ax[3, 1].set_ylabel("Distance traveller (m)")
+    ax[3, 1].set_title("Distance travelled")
+    ax[3, 1].legend()
+
+    # fig.suptitle("Comparison of product and reactant beam loss rates due to electron collisions")
+    fig.tight_layout()
     plt.show()
 
 

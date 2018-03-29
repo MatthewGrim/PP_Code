@@ -7,8 +7,9 @@ This file contains code to model relaxation processes in plasmas due to binary c
 
 import numpy as np
 
-from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision
+from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle, CoulombCollision
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
+from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 
 
 class RelaxationProcess(object):
@@ -96,4 +97,24 @@ class RelaxationProcess(object):
 
 
 if __name__ == '__main__':
-    pass
+    electron_mass = PhysicalConstants.electron_mass
+    deuterium_mass = 2.01410178 * UnitConversions.amu_to_kg
+    deuterium_tritium_mass = 5.0064125184e-27
+    alpha_mass = 3.7273 * UnitConversions.amu_to_kg
+
+    beam_species = ChargedParticle(deuterium_tritium_mass, 5 * PhysicalConstants.electron_charge)
+    background_species = ChargedParticle(electron_mass, -PhysicalConstants.electron_charge)
+    n_background = 1e30
+    e_beam = 0.5e6 * PhysicalConstants.electron_charge
+    beam_velocity = np.sqrt(2 * e_beam / beam_species.m)
+    temp = 20e3 * UnitConversions.eV_to_K
+
+    collision = CoulombCollision(background_species, beam_species, 1.0, beam_velocity)
+    relaxation_process = RelaxationProcess(collision)
+
+    kinetic_frequency = relaxation_process.kinetic_loss_stationary_frequency(n_background, temp, beam_velocity)
+    momentum_frequency = relaxation_process.momentum_loss_stationary_frequency(n_background, temp, beam_velocity,
+                                                                               first_background=True)
+
+    print("Kinetic Relaxation Time: {}".format(1 / kinetic_frequency))
+    print("Momentum Relaxation Time: {}".format(1 / momentum_frequency))
