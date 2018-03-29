@@ -63,6 +63,33 @@ def plot_collisional_frequencies():
         plt.show()
 
 
+def get_maxwellian_collisional_frequencies():
+    # Generate charged particles
+    deuterium = ChargedParticle(2.01410178 * 1.66054e-27, PhysicalConstants.electron_charge)
+    electron = ChargedParticle(9.014e-31, -PhysicalConstants.electron_charge)
+
+    impact_parameter_ratio = 1.0
+    beam_velocity = 5e6
+    n = 1e25
+    temperature = 20e3 * UnitConversions.eV_to_K
+
+    # Get reactant collision frequency and energy loss rate
+    collision = CoulombCollision(electron, deuterium,
+                                          impact_parameter_ratio,
+                                          beam_velocity)
+    relaxation = RelaxationProcess(collision)
+    numerical_v_P = relaxation.momentum_loss_maxwellian_frequency(n, temperature, beam_velocity)
+
+    theoretical_v_P = 2 / (3 * np.sqrt(2 * np.pi)) * relaxation.momentum_loss_stationary_frequency(n, temperature, beam_velocity)
+
+    print("Numerical Momentum Loss Frequency: {}".format(numerical_v_P[0]))
+    print("Theoretical Momentum Loss Frequency: {}".format(theoretical_v_P))
+    print("Ratio: {}\n".format(numerical_v_P[0] / theoretical_v_P))
+
+    numerical_v_K = relaxation.kinetic_loss_maxwellian_frequency(n, temperature, beam_velocity)
+    print("Numerical Kinetic Loss Frequency: {}".format(numerical_v_K[0]))
+
+
 def compare_product_and_reactant_energy_loss_rates():
     # Generate charged particles
     alpha = ChargedParticle(6.64424e-27, PhysicalConstants.electron_charge * 2)
@@ -121,7 +148,8 @@ def compare_product_and_reactant_energy_loss_rates():
 
     v_electron = np.sqrt(2 * PhysicalConstants.boltzmann_constant * temperature / electron.m)
 
-    print("For stationary collisions to be a reasonable approximation, the beams need to be travelling faster than the electron thermal velocity... ")
+    print("For stationary collisions to be a reasonable approximation, the beams need "
+          "to be travelling faster than the electron thermal velocity... ")
     print("Alpha-Electron Velocity Ratio: {}".format(v_alpha / v_electron))
     print("Deuterium-Electron Velocity Ratio: {}".format(v_deuterium / v_electron))
 
@@ -196,4 +224,5 @@ def compare_product_and_reactant_energy_loss_rates():
 
 if __name__ == '__main__':
     # plot_collisional_frequencies()
-    compare_product_and_reactant_energy_loss_rates()
+    # compare_product_and_reactant_energy_loss_rates()
+    get_maxwellian_collisional_frequencies()
