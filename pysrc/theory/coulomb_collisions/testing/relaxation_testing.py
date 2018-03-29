@@ -75,8 +75,8 @@ def get_maxwellian_collisional_frequencies():
 
     # Get reactant collision frequency and energy loss rate
     collision = CoulombCollision(electron, deuterium,
-                                          impact_parameter_ratio,
-                                          beam_velocity)
+                                 impact_parameter_ratio,
+                                 beam_velocity)
     relaxation = RelaxationProcess(collision)
     numerical_v_P = relaxation.momentum_loss_maxwellian_frequency(n, temperature, beam_velocity)
 
