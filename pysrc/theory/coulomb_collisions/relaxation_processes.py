@@ -170,9 +170,7 @@ class RelaxationProcess(object):
         return dK_dL
 
 
-if __name__ == '__main__':
-    use_alpha = True
-
+def get_iec_frequencies(use_alpha, T_keV):
     electron_mass = PhysicalConstants.electron_mass
     deuterium_mass = 2.01410178 * UnitConversions.amu_to_kg
     deuterium_tritium_mass = 5.0064125184e-27
@@ -184,7 +182,6 @@ if __name__ == '__main__':
     n_background = 1e20
     dt_velocity = np.sqrt(2 * 0.5e6 * PhysicalConstants.electron_charge / dt_species.m)
     alpha_velocity = np.sqrt(2 * 3.5e6 * PhysicalConstants.electron_charge / alpha_species.m)
-    temp = 10e3 * UnitConversions.eV_to_K
 
     beam_species = alpha_species if use_alpha else dt_species
     beam_velocity = alpha_velocity if use_alpha else dt_velocity
@@ -192,9 +189,16 @@ if __name__ == '__main__':
     collision = CoulombCollision(background_species, beam_species, 1.0, beam_velocity)
     relaxation_process = RelaxationProcess(collision)
 
-    kinetic_frequency = relaxation_process.kinetic_loss_stationary_frequency(n_background, temp, beam_velocity)
-    momentum_frequency = relaxation_process.momentum_loss_stationary_frequency(n_background, temp, beam_velocity,
+    kinetic_frequency = relaxation_process.kinetic_loss_stationary_frequency(n_background, T_keV, beam_velocity)
+    momentum_frequency = relaxation_process.momentum_loss_stationary_frequency(n_background, T_keV, beam_velocity,
                                                                                first_background=True)
+    return kinetic_frequency, momentum_frequency
+
+
+if __name__ == '__main__':
+    use_alpha = True
+    T = 10
+    kinetic_frequency, momentum_frequency = get_iec_frequencies(use_alpha, T)
 
     print("Kinetic Relaxation Time: {}".format(1 / kinetic_frequency))
     print("Momentum Relaxation Time: {}".format(1 / momentum_frequency))
