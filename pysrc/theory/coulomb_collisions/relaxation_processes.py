@@ -6,7 +6,7 @@ This file contains code to model relaxation processes in plasmas due to binary c
 """
 
 import numpy as np
-from scipy.integrate import tplquad
+from scipy import integrate
 
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle, CoulombCollision
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
@@ -75,7 +75,7 @@ class RelaxationProcess(object):
         return v_P
 
     def kinetic_loss_maxwellian_frequency(self, n_background, T_background, beam_velocity,
-                                          first_background=False):
+                                          first_background=False, epsabs=1000.0):
         """
         Calculate the collision frequency for momentum losses in a Maxwellian background. This
         value is calculated numerically
@@ -84,19 +84,21 @@ class RelaxationProcess(object):
         T_background: the temperature of the background species
         beam_velocity: speed of collision
         first_background: boolean to determine which species is the background
+        epsabs: absolute error in integration
         :return:
         """
         m_background = self.__c.p_1.m if first_background else self.__c.p_2.m
         oned_variance = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
         v_max = 3 * oned_variance
-        assert v_max < beam_velocity, "There is an asymptote at v_total=0.0. Therefore v_max / beam_velocity < 1.0. " \
-                                      "The ratio is currently: {}".format(v_max / beam_velocity)
+
+        max_freq = 1e15
 
         def get_distribution_component(u, v, w):
             v_total = np.sqrt((beam_velocity - u) ** 2 + v ** 2 + w ** 2)
 
             # Get stationary collision frequencies
             stationary_frequency = self.kinetic_loss_stationary_frequency(n_background, T_background, v_total)
+            stationary_frequency = max_freq if stationary_frequency > max_freq else stationary_frequency
 
             # Get Maxwell distribution of plasma
             f_background = (m_background / (2 * np.pi * PhysicalConstants.boltzmann_constant * T_background)) ** 1.5
@@ -105,13 +107,13 @@ class RelaxationProcess(object):
             return f_background * stationary_frequency
 
         # Integrate 3D distribution
-        v_K = tplquad(get_distribution_component, -v_max, v_max, lambda x: -v_max, lambda x: v_max, lambda x, y: -v_max,
-                      lambda x, y: v_max)
+        v_K = integrate.tplquad(get_distribution_component, -v_max, v_max, lambda x: -v_max, lambda x: v_max, lambda x, y: -v_max,
+                                lambda x, y: v_max, epsabs=epsabs)
 
         return v_K
 
     def momentum_loss_maxwellian_frequency(self, n_background, T_background, beam_velocity,
-                                           first_background=False):
+                                           first_background=False, epsabs=1000.0):
         """
         Calculate the collision frequency for momentum losses in a Maxwellian background. This
         value is calculated numerically
@@ -120,13 +122,14 @@ class RelaxationProcess(object):
         T_background: the temperature of the background species
         beam_velocity: speed of collision
         first_background: boolean to determine which species is the background
+        epsabs: absolute error in integration
         :return:
         """
         m_background = self.__c.p_1.m if first_background else self.__c.p_2.m
         oned_variance = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
         v_max = 3 * oned_variance
-        assert v_max < beam_velocity, "There is an asymptote at v_total=0.0. Therefore v_max / beam_velocity < 1.0. " \
-                                      "The ratio is currently: {}".format(v_max / beam_velocity)
+
+        max_freq = 1e15
 
         def get_distribution_component(u, v, w):
             v_total = np.sqrt((beam_velocity - u) ** 2 + v ** 2 + w ** 2)
@@ -134,6 +137,7 @@ class RelaxationProcess(object):
             # Get stationary collision frequencies
             stationary_frequency = self.momentum_loss_stationary_frequency(n_background, T_background, v_total,
                                                                            first_background)
+            stationary_frequency = max_freq if stationary_frequency > max_freq else stationary_frequency
 
             # Get Maxwell distribution of plasma
             f_background = (m_background / (2 * np.pi * PhysicalConstants.boltzmann_constant * T_background)) ** 1.5
@@ -142,8 +146,8 @@ class RelaxationProcess(object):
             return f_background * stationary_frequency
 
         # Integrate 3D distribution
-        v_P = tplquad(get_distribution_component, -v_max, v_max, lambda x: -v_max, lambda x: v_max, lambda x, y: -v_max,
-                      lambda x, y: v_max)
+        v_P = integrate.tplquad(get_distribution_component, -v_max, v_max, lambda x: -v_max, lambda x: v_max, lambda x, y: -v_max,
+                      lambda x, y: v_max, epsabs=epsabs)
 
         return v_P
 

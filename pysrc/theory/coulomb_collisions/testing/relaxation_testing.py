@@ -9,10 +9,10 @@ processes
 import numpy as np
 from matplotlib import pyplot as plt
 
-from pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
-from pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess
-from pysrc.utils.unit_conversions import UnitConversions
-from pysrc.utils.physical_constants import PhysicalConstants
+from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
+from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess
+from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
+from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
 def plot_collisional_frequencies():
@@ -65,16 +65,17 @@ def plot_collisional_frequencies():
 
 def get_maxwellian_collisional_frequencies():
     # Generate charged particles
-    deuterium = ChargedParticle(2.01410178 * 1.66054e-27, PhysicalConstants.electron_charge)
+    alpha = ChargedParticle(6.64424e-27, PhysicalConstants.electron_charge * 2)
     electron = ChargedParticle(9.014e-31, -PhysicalConstants.electron_charge)
 
     impact_parameter_ratio = 1.0
-    beam_velocity = 5e6
-    n = 1e25
+    beam_velocity = np.sqrt(2 * 3.5e6 * PhysicalConstants.electron_charge / alpha.m)
+    n = 1e20
     temperature = 20e3 * UnitConversions.eV_to_K
+    print(n, temperature, beam_velocity)
 
     # Get reactant collision frequency and energy loss rate
-    collision = CoulombCollision(electron, deuterium,
+    collision = CoulombCollision(electron, alpha,
                                  impact_parameter_ratio,
                                  beam_velocity)
     relaxation = RelaxationProcess(collision)
@@ -84,10 +85,11 @@ def get_maxwellian_collisional_frequencies():
 
     print("Numerical Momentum Loss Frequency: {}".format(numerical_v_P[0]))
     print("Theoretical Momentum Loss Frequency: {}".format(theoretical_v_P))
-    print("Ratio: {}\n".format(numerical_v_P[0] / theoretical_v_P))
+    print("Numerical to theoretical momentum loss ratio: {}\n".format(numerical_v_P[0] / theoretical_v_P))
 
     numerical_v_K = relaxation.kinetic_loss_maxwellian_frequency(n, temperature, beam_velocity)
     print("Numerical Kinetic Loss Frequency: {}".format(numerical_v_K[0]))
+    print("Numerical kinetic to momentum loss ratio: {}".format(numerical_v_K[0] / numerical_v_P[0]))
 
 
 def compare_product_and_reactant_energy_loss_rates(number_density, temperature, plot_energy_frequencies=True):
@@ -203,9 +205,58 @@ def compare_product_and_reactant_energy_loss_rates(number_density, temperature, 
     plt.show()
 
 
+def compare_maxwellian_and_stationary_frequencies(number_density, temperature):
+    # Generate charged particles
+    alpha = ChargedParticle(6.64424e-27, PhysicalConstants.electron_charge * 2)
+    electron = ChargedParticle(9.014e-31, -PhysicalConstants.electron_charge)
+
+    # Get deuterium and alpha velocities from product and reactant beam
+    # energies
+    e_alpha = 3.5e6 * PhysicalConstants.electron_charge
+    v_alpha = np.sqrt(2 * e_alpha / alpha.m)
+
+    # Get product collision frequency and energy loss rate
+    impact_parameter_ratio = 1.0  # Is not necessary for this analysis
+    product_collision = CoulombCollision(alpha, electron,
+                                         impact_parameter_ratio,
+                                         v_alpha)
+    product_relaxation = RelaxationProcess(product_collision)
+    alpha_stationary_kinetic_frequency = product_relaxation.kinetic_loss_stationary_frequency(number_density, temperature, v_alpha)
+    alpha_stationary_momentum_frequency = product_relaxation.momentum_loss_stationary_frequency(number_density, temperature, v_alpha)
+
+    alpha_maxwellian_kinetic_frequency = np.zeros(number_density.shape)
+    alpha_maxwellian_momentum_frequency = np.zeros(number_density.shape)
+    for i, n in enumerate(number_density):
+        # Get error term from approximation using stationary frequency
+        v_K_error = 1e-5 * alpha_stationary_kinetic_frequency[i]
+        v_P_error = 1e-5 * alpha_stationary_momentum_frequency[i]
+        print(v_K_error, v_P_error)
+
+        # Get maxwellian frequencies
+        v_K = product_relaxation.kinetic_loss_maxwellian_frequency(n, temperature, v_alpha, epsabs=v_K_error)
+        v_P = product_relaxation.momentum_loss_maxwellian_frequency(n, temperature, v_alpha, epsabs=v_P_error)
+        alpha_maxwellian_kinetic_frequency[i] = v_K[0]
+        alpha_maxwellian_momentum_frequency[i] = v_P[0]
+
+        print(n, v_K[0], v_K[0] - alpha_stationary_kinetic_frequency[i], v_P[0], v_P[0] - alpha_stationary_momentum_frequency[i])
+
+    fig, ax = plt.subplots(2)
+
+    ax[0].loglog(number_density, alpha_stationary_kinetic_frequency)
+    ax[0].loglog(number_density, alpha_maxwellian_kinetic_frequency)
+
+    ax[1].loglog(number_density, alpha_stationary_momentum_frequency)
+    ax[1].loglog(number_density, alpha_maxwellian_momentum_frequency)
+
+    plt.show()
+
 if __name__ == '__main__':
     # plot_collisional_frequencies()
-    number_density = np.logspace(18, 30, 100)
-    temperature = 20e3 * UnitConversions.eV_to_K
-    compare_product_and_reactant_energy_loss_rates(number_density, temperature)
+
     # get_maxwellian_collisional_frequencies()
+
+    number_density = np.logspace(20, 30, 10)
+    temperature = 20e3 * UnitConversions.eV_to_K
+    # compare_product_and_reactant_energy_loss_rates(number_density, temperature)
+    compare_maxwellian_and_stationary_frequencies(number_density, temperature)
+
