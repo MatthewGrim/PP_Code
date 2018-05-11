@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-from plasma_physics.pysrc.theory.reactivities.fusion_reactivities import BoschHaleReactivityFit, FusionReaction, DDReaction, DTReaction
+from plasma_physics.pysrc.theory.reactivities.fusion_reactivities import BoschHaleReactivityFit, FusionReaction, DDReaction, DTReaction, pBReaction
 from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle, CoulombCollision
@@ -38,7 +38,7 @@ def get_fusion_timescale(n, T, reaction):
 	return 1 / reaction_rate
 
 
-def get_thermalisation_rate(n, T, relaxation_process, beam_velocity, reaction_name):
+def get_thermalisation_rate(n, T, relaxation_process, beam_velocity, reaction_name, force_calculation=True):
 	"""
 	Get the thermalisation rate of a given fusion reaction
 
@@ -57,7 +57,8 @@ def get_thermalisation_rate(n, T, relaxation_process, beam_velocity, reaction_na
 	# Get maxwellian frequency
 	print(reaction_name)
 	file_name = "maxwellian_frequencies_{}".format(reaction_name)
-	if not os.path.exists(file_name):
+	file_path = os.path.join("data", file_name)
+	if not os.path.exists(file_path) or force_calculation:
 		if isinstance(n, np.ndarray):
 			maxwellian_frequency = np.zeros(stationary_frequency.shape)
 			for i, number_density in enumerate(n):
@@ -69,7 +70,7 @@ def get_thermalisation_rate(n, T, relaxation_process, beam_velocity, reaction_na
 		else:
 			maxwellian_frequency = relaxation_process.numerical_kinetic_loss_maxwellian_frequency(n, T, beam_velocity)
 	else:
-		maxwellian_frequency = np.loadtxt(file_name)
+		maxwellian_frequency = np.loadtxt(file_path)
 
 	return stationary_frequency, 1.0 / maxwellian_frequency
 
@@ -97,6 +98,13 @@ if __name__ == '__main__':
 		beam_velocity = np.sqrt(2 * e / deuterium_tritium.m)
 		beam_species = deuterium_tritium
 		background_species = deuterium_tritium
+	elif reaction_name == "pB":
+		reaction = pBReaction()
+		proton_boron = ChargedParticle((10.81 + 1) * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge * 12)
+
+		beam_velocity = np.sqrt(2 * e / proton_boron.m)
+		beam_species = proton_boron
+		background_species = proton_boron
 	else:
 		raise ValueError("Name is invalid!")
 	collision = CoulombCollision(beam_species, background_species, 1.0, beam_velocity)
@@ -114,8 +122,8 @@ if __name__ == '__main__':
 	ax[0].loglog(n, t_thermalisation_stationary, label="Stationary Thermalisation Rate")
 	ax[0].loglog(n, t_thermalisation_maxwellian, label="Stationary Thermalisation Rate")
 	
-	ax[1].plot(n, t_thermalisation_stationary / t_fus, label="Stationary Thermalisation Rate")
-	ax[1].plot(n, t_thermalisation_maxwellian / t_fus, label="Stationary Thermalisation Rate")
+	ax[1].loglog(n, t_thermalisation_stationary / t_fus, label="Stationary Thermalisation Rate")
+	ax[1].loglog(n, t_thermalisation_maxwellian / t_fus, label="Stationary Thermalisation Rate")
 
 	ax[0].set_ylabel("Seconds")
 	ax[0].set_xlabel("Number density")
