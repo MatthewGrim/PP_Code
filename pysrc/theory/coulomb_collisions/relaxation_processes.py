@@ -215,7 +215,7 @@ def get_iec_frequencies(use_alpha, temperature, use_maxwellian=False):
     alpha_mass = 3.7273 * UnitConversions.amu_to_kg
 
     alpha_species = ChargedParticle(alpha_mass, 2 * PhysicalConstants.electron_charge)
-    dt_species = ChargedParticle(deuterium_tritium_mass, 5 * PhysicalConstants.electron_charge)
+    dt_species = ChargedParticle(deuterium_tritium_mass, 2 * PhysicalConstants.electron_charge)
     background_species = ChargedParticle(electron_mass, -PhysicalConstants.electron_charge)
     n_background = 1e20
     dt_velocity = np.sqrt(2 * 50e3 * PhysicalConstants.electron_charge / dt_species.m)

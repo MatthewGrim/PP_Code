@@ -10,6 +10,7 @@ class UnitConversions(object):
     eV_to_K = 1.1604522167e4
     K_to_eV = 1 / eV_to_K
     amu_to_kg = 1.66054e-27
+    barns_to_cm2 = 1e-24
 
     def __init__(self):
         raise RuntimeError("This class is static!")
