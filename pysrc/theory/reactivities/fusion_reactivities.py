@@ -81,7 +81,7 @@ class DDReaction(FusionReaction):
 
 class D3HeReaction(FusionReaction):
     def __init__(self):
-        self.same_species_reaction = True
+        self.same_species_reaction = False
         self.M1 = 2
         self.M2 = 3
         C0 = 10.572
@@ -95,10 +95,23 @@ class D3HeReaction(FusionReaction):
         super(D3HeReaction, self).__init__(C0, C1, C2, C3, C4, C5, C6, C7)
 
 
-class BoschHaleReactivityFit(object):
-    """
-    Class to generate reactivity approximation by Bosch and Hale 1992
-    """
+class pBReaction(FusionReaction):
+    def __init__(self):
+        self.same_species_reaction = False
+        self.M1 = 11
+        self.M2 = 1
+        C0 = 17.708
+        C1 = 6382e-16
+        C2 = -59.357e-3
+        C3 = 201.65e-3
+        C4 = 1.0404e-3
+        C5 = 2.7621e-3
+        C6 = -0.0091653e-3
+        C7 = 0.00098305e-3
+        super(pBReaction, self).__init__(C0, C1, C2, C3, C4, C5, C6, C7)
+
+
+class ReactivityFit(object):
     def __init__(self, fusion_reaction):
         assert isinstance(fusion_reaction, FusionReaction)
         self.reactants = fusion_reaction
@@ -110,31 +123,63 @@ class BoschHaleReactivityFit(object):
     def epsilon(self, T):
         return self.reactants.C0 / (T ** (1.0 / 3.0))
 
+
+class BoschHaleReactivityFit(ReactivityFit):
+    """
+    Class to generate reactivity approximation by Bosch and Hale 1992
+    """
+    def __init__(self, fusion_reaction):
+        assert isinstance(fusion_reaction, FusionReaction)
+        self.reactants = fusion_reaction
+
     def get_reactivity(self, T):
         zeta = self.zeta(T)
         epsilon = self.epsilon(T)
         return self.reactants.C1 * zeta ** (-5.0/6.0) * epsilon ** 2 * np.exp(-3 * zeta ** (1 / 3.0) * epsilon)
 
 
+class NevinsSwainReactivityFit(ReactivityFit):
+    """
+    Class to generate reactivity approximation by Bosch and Hale 1992
+    """
+    def __init__(self, fusion_reaction):
+        self.reactants = fusion_reaction
+
+    def get_reactivity(self, T):
+        zeta = self.zeta(T)
+        epsilon = self.epsilon(T)
+        
+        reactivity = self.reactants.C1 * zeta ** (-5.0 / 6.0) * epsilon ** 2
+        reactivity *= np.exp(-3.0 * zeta ** (1.0 / 3.0) * epsilon)
+        reactivity += 5.41e-15 * T ** (-1.5) * np.exp(-148.0 / T)
+
+        return reactivity
+
+
 if __name__ == '__main__':
     dt_reaction = DTReaction()
     dd_reaction = DDReaction()
     d3he_reaction = D3HeReaction()
+    pBReaction = pBReaction()
     dt_reactivity = BoschHaleReactivityFit(dt_reaction)
     dd_reactivity = BoschHaleReactivityFit(dd_reaction)
     d3he_reactivity = BoschHaleReactivityFit(d3he_reaction)
+    pB_reactivity = NevinsSwainReactivityFit(pBReaction)
 
-    T = np.linspace(1, 100, 200)
-
+    T = np.logspace(0, 3, 200)
     dt_reactivities =  dt_reactivity.get_reactivity(T)
     dd_reactivities = dd_reactivity.get_reactivity(T)
     d3he_reactivities = d3he_reactivity.get_reactivity(T)
+    pB_reactivities = pB_reactivity.get_reactivity(T)
 
     plt.figure(figsize=(12, 10))
     plt.loglog(T, dt_reactivities, label="DT")
     plt.loglog(T, dd_reactivities, label="DD")
     plt.loglog(T, d3he_reactivities, label="D3He")
+    plt.loglog(T, pB_reactivities, label="pB")
     plt.title("Reactivity against Temperature for Different Fusion Reactions")
+    plt.ylim([1e-20, 1e-14])
+    plt.xlim([1, 100])
     plt.xlabel("T (keV)")
     plt.ylabel("<sigma> (cm^3/s)")
     plt.legend()
