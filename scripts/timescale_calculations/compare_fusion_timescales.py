@@ -14,7 +14,7 @@ from plasma_physics.pysrc.theory.reactivities.fusion_reactivities import BoschHa
 from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle, CoulombCollision
-from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess
+from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess, MaxwellianRelaxationProcess
 
 
 def get_fusion_timescale(n, T, reaction):
@@ -38,7 +38,7 @@ def get_fusion_timescale(n, T, reaction):
 	return 1 / reaction_rate
 
 
-def get_thermalisation_rate(n, T, relaxation_process, beam_velocity, reaction_name, force_calculation=True):
+def get_thermalisation_rate(n, T, relaxation_process, beam_velocity, reaction_name, force_calculation=False):
 	"""
 	Get the thermalisation rate of a given fusion reaction
 
@@ -63,7 +63,8 @@ def get_thermalisation_rate(n, T, relaxation_process, beam_velocity, reaction_na
 			maxwellian_frequency = np.zeros(stationary_frequency.shape)
 			for i, number_density in enumerate(n):
 				print(i)
-				maxwellian_frequency[i] = relaxation_process.numerical_kinetic_loss_maxwellian_frequency(number_density, T, beam_velocity)[0]
+				# maxwellian_frequency[i] = relaxation_process.numerical_kinetic_loss_maxwellian_frequency(number_density, T, beam_velocity)
+				maxwellian_frequency[i] = relaxation_process.maxwellian_collisional_frequency(number_density, T, beam_velocity)
 
 			# Save result to file
 			np.savetxt(file_name, maxwellian_frequency)
@@ -83,7 +84,7 @@ if __name__ == '__main__':
 	e = 1.5 * PhysicalConstants.boltzmann_constant * T_K
 
 	# Set up reaction
-	reaction_name = "DD"
+	reaction_name = "pB"
 	if reaction_name == "DD":
 		reaction = DDReaction()
 		deuterium = ChargedParticle(2.01410178 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
@@ -108,10 +109,11 @@ if __name__ == '__main__':
 	else:
 		raise ValueError("Name is invalid!")
 	collision = CoulombCollision(beam_species, background_species, 1.0, beam_velocity)
-	relaxation_process = RelaxationProcess(collision)
+	relaxation_process = MaxwellianRelaxationProcess(collision)
 
 	# Get thermalisation rate
-	t_thermalisation_stationary, t_thermalisation_maxwellian = get_thermalisation_rate(n, T_K, relaxation_process, beam_velocity, reaction_name=reaction_name)
+	t_thermalisation_stationary, t_thermalisation_maxwellian = get_thermalisation_rate(n, T_K, relaxation_process, beam_velocity, reaction_name=reaction_name,
+		                                                                               force_calculation=False)
 
 	# Get fusion reaction rate
 	t_fus = get_fusion_timescale(n, T_keV, reaction)
@@ -120,10 +122,10 @@ if __name__ == '__main__':
 	
 	ax[0].loglog(n, t_fus, label="Fusion Reaction")
 	ax[0].loglog(n, t_thermalisation_stationary, label="Stationary Thermalisation Rate")
-	ax[0].loglog(n, t_thermalisation_maxwellian, label="Stationary Thermalisation Rate")
+	ax[0].loglog(n, t_thermalisation_maxwellian, label="Maxwellian Thermalisation Rate")
 	
 	ax[1].loglog(n, t_thermalisation_stationary / t_fus, label="Stationary Thermalisation Rate")
-	ax[1].loglog(n, t_thermalisation_maxwellian / t_fus, label="Stationary Thermalisation Rate")
+	ax[1].loglog(n, t_thermalisation_maxwellian / t_fus, label="Maxwellian Thermalisation Rate")
 
 	ax[0].set_ylabel("Seconds")
 	ax[0].set_xlabel("Number density")
@@ -131,6 +133,7 @@ if __name__ == '__main__':
 	ax[0].legend()
 	ax[1].set_ylabel("Ratio")
 	ax[1].set_xlabel("Number density")
+	ax[1].legend()
 	ax[1].set_title("Timescales normalised by fusion reaction rate")
 	ax[1].legend()
 	

@@ -24,7 +24,7 @@ class RelaxationProcess(object):
         """
         assert isinstance(collision, CoulombCollision)
 
-        self.__c = collision
+        self._c = collision
 
     def kinetic_loss_stationary_frequency(self, n_background, T_background, beam_velocity):
         """
@@ -35,11 +35,11 @@ class RelaxationProcess(object):
         T_background: the temperature of the background species
         beam_velocity: speed of collision
         """
-        q_1 = self.__c.p_1.q
-        m_1 = self.__c.p_1.m
-        q_2 = self.__c.p_2.q
-        m_2 = self.__c.p_2.m
-        b_90 = self.__c.b_90
+        q_1 = self._c.p_1.q
+        m_1 = self._c.p_1.m
+        q_2 = self._c.p_2.q
+        m_2 = self._c.p_2.m
+        b_90 = self._c.b_90
 
         debye_length = PhysicalConstants.epsilon_0 * T_background
         debye_length /= n_background * PhysicalConstants.electron_charge ** 2
@@ -65,14 +65,49 @@ class RelaxationProcess(object):
         """
         v_K = self.kinetic_loss_stationary_frequency(n_background, T_background, beam_velocity)
 
-        m_1 = self.__c.p_1.m
-        m_2 = self.__c.p_2.m
+        m_1 = self._c.p_1.m
+        m_2 = self._c.p_2.m
 
         conversion_factor = (m_1 + m_2) / (2 * m_2) if first_background else (m_1 + m_2) / (2 * m_1)
 
         v_P = v_K * conversion_factor
 
         return v_P
+
+    def energy_loss_with_distance(self, n_background, T_background, beam_velocity,
+                                  first_background=False):
+        """
+        Calculate energy loss rate with distance
+
+        n_background: the density of the background species
+        T_background: the temperature of the background species
+        beam_velocity: speed of collision
+        first_background: boolean to determine which species is the background
+        """
+        v_K = self.kinetic_loss_stationary_frequency(n_background, T_background, beam_velocity)
+
+        m_1 = self._c.p_1.m
+        m_2 = self._c.p_2.m
+
+        conversion_factor = m_2 if first_background else m_1
+        conversion_factor *= 0.5 * beam_velocity
+
+        dK_dL = v_K * conversion_factor
+
+        return dK_dL
+
+
+class MaxwellianRelaxationProcess(RelaxationProcess):
+    def __init__(self, collision):
+        """
+        Initialise the class with the collision being modelled. A Maxwellian Relaxation Process
+        uses the base class stationary frequency calculation to get Maxwellian frequencies. It 
+        also has some theoretical approximations implemented.
+
+        collision: the binary collision being modelled
+        """
+        super(MaxwellianRelaxationProcess, self).__init__(collision)
+
 
     def maxwellian_collisional_frequency(self, n_background, T_background, beam_velocity, first_background=False):
         """
@@ -83,18 +118,18 @@ class RelaxationProcess(object):
         T_background: the temperature of the background species
         first_background: boolean to determine which species is the background
         """
-        m_background = self.__c.p_1.m if first_background else self.__c.p_2.m
-        m_beam = self.__c.p_2.m if first_background else self.__c.p_1.m
+        m_background = self._c.p_1.m if first_background else self._c.p_2.m
+        m_beam = self._c.p_2.m if first_background else self._c.p_1.m
         v_thermal = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
 
         v_ratio = v_thermal / beam_velocity
         if v_ratio < 100.0:
-            print("Warning! Assumption that thermal velocty is greater than ion velocity may be invalid")
+            print("Warning! Assumption that thermal velocty is greater than ion velocity may be invalid: Velocity Ratio = {}".format(v_ratio))
 
         # Get relevant particle parameters
-        q_1 = self.__c.p_1.q
-        q_2 = self.__c.p_2.q
-        b_90 = self.__c.b_90
+        q_1 = self._c.p_1.q
+        q_2 = self._c.p_2.q
+        b_90 = self._c.b_90
 
         # Get coulomb logarithm
         debye_length = PhysicalConstants.epsilon_0 * T_background
@@ -121,7 +156,7 @@ class RelaxationProcess(object):
         epsabs: absolute error in integration
         :return:
         """
-        m_background = self.__c.p_1.m if first_background else self.__c.p_2.m
+        m_background = self._c.p_1.m if first_background else self._c.p_2.m
         oned_variance = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
         v_max = 3 * oned_variance
 
@@ -131,7 +166,7 @@ class RelaxationProcess(object):
             v_total = np.sqrt((beam_velocity - u) ** 2 + v ** 2 + w ** 2)
 
             # Get stationary collision frequencies
-            stationary_frequency = self.kinetic_loss_stationary_frequency(n_background, T_background, v_total)
+            stationary_frequency = self.kinetic_loss_stationary_frequency(n_background, T_background, v_total) / n_background
             stationary_frequency = max_freq if stationary_frequency > max_freq else stationary_frequency
 
             # Get Maxwell distribution of plasma
@@ -144,7 +179,7 @@ class RelaxationProcess(object):
         v_K = integrate.tplquad(get_distribution_component, -v_max, v_max, lambda x: -v_max, lambda x: v_max, lambda x, y: -v_max,
                                 lambda x, y: v_max, epsrel=epsrel)
 
-        return v_K
+        return n_background * v_K[0]
 
     def numerical_momentum_loss_maxwellian_frequency(self, n_background, T_background, beam_velocity,
                                                      first_background=False, epsrel=1e-3):
@@ -159,7 +194,7 @@ class RelaxationProcess(object):
         epsabs: absolute error in integration
         :return:
         """
-        m_background = self.__c.p_1.m if first_background else self.__c.p_2.m
+        m_background = self._c.p_1.m if first_background else self._c.p_2.m
         oned_variance = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
         v_max = 3 * oned_variance
 
@@ -170,7 +205,7 @@ class RelaxationProcess(object):
 
             # Get stationary collision frequencies
             stationary_frequency = self.momentum_loss_stationary_frequency(n_background, T_background, v_total,
-                                                                           first_background)
+                                                                           first_background) / n_background
             stationary_frequency = max_freq if stationary_frequency > max_freq else stationary_frequency
 
             # Get Maxwell distribution of plasma
@@ -183,29 +218,7 @@ class RelaxationProcess(object):
         v_P = integrate.tplquad(get_distribution_component, -v_max, v_max, lambda x: -v_max, lambda x: v_max, lambda x, y: -v_max,
                                 lambda x, y: v_max, epsrel=epsrel)
 
-        return v_P
-
-    def energy_loss_with_distance(self, n_background, T_background, beam_velocity,
-                                  first_background=False):
-        """
-        Calculate energy loss rate with distance
-
-        n_background: the density of the background species
-        T_background: the temperature of the background species
-        beam_velocity: speed of collision
-        first_background: boolean to determine which species is the background
-        """
-        v_K = self.kinetic_loss_stationary_frequency(n_background, T_background, beam_velocity)
-
-        m_1 = self.__c.p_1.m
-        m_2 = self.__c.p_2.m
-
-        conversion_factor = m_2 if first_background else m_1
-        conversion_factor *= 0.5 * beam_velocity
-
-        dK_dL = v_K * conversion_factor
-
-        return dK_dL
+        return n_background * v_P[0]
 
 
 def get_iec_frequencies(use_alpha, temperature, use_maxwellian=False):
@@ -225,12 +238,12 @@ def get_iec_frequencies(use_alpha, temperature, use_maxwellian=False):
     beam_velocity = alpha_velocity if use_alpha else dt_velocity
 
     collision = CoulombCollision(beam_species, background_species, 1.0, beam_velocity)
-    relaxation_process = RelaxationProcess(collision)
+    relaxation_process = MaxwellianRelaxationProcess(collision)
 
     if use_maxwellian:
         v_K = relaxation_process.numerical_kinetic_loss_maxwellian_frequency(n_background, temperature, beam_velocity)
         v_P = relaxation_process.numerical_kinetic_loss_maxwellian_frequency(n_background, temperature, beam_velocity)
-        return v_K[0], v_P[0]
+        return v_K, v_P
 
         # maxwellian_frequency = relaxation_process.maxwellian_collisional_frequency(n_background, temperature, beam_velocity)
         # return maxwellian_frequency, maxwellian_frequency
