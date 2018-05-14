@@ -26,7 +26,7 @@ class RelaxationProcess(object):
 
         self._c = collision
 
-    def kinetic_loss_stationary_frequency(self, n_background, T_background, beam_velocity):
+    def kinetic_loss_stationary_frequency(self, n_background, T_background, beam_velocity, include_density=True):
         """
         Calculate the collision frequency for kinetic losses in stationary
         background
@@ -34,6 +34,8 @@ class RelaxationProcess(object):
         n_background: the density of the background species
         T_background: the temperature of the background species
         beam_velocity: speed of collision
+        include_density: boolean value for maxwellian relaxation processes to set false to improve
+                         numerical integration
         """
         q_1 = self._c.p_1.q
         m_1 = self._c.p_1.m
@@ -47,14 +49,17 @@ class RelaxationProcess(object):
 
         coulomb_logarithm = np.log(debye_length / b_90)
 
-        v_K = n_background * q_1 ** 2 * q_2 ** 2 / (4.0 * np.pi * PhysicalConstants.epsilon_0) ** 2
+        v_K = q_1 ** 2 * q_2 ** 2 / (4.0 * np.pi * PhysicalConstants.epsilon_0) ** 2
         v_K *= 8.0 * np.pi / (m_1 * m_2 * beam_velocity ** 3)
         v_K *= coulomb_logarithm
 
-        return v_K
+        if include_density:
+            return n_background * v_K
+        else:
+            return v_K
 
     def momentum_loss_stationary_frequency(self, n_background, T_background, beam_velocity,
-                                           first_background=False):
+                                           first_background=False, include_density=True):
         """
         Calculate the collision frequency for momentum losses in stationary background
 
@@ -62,8 +67,10 @@ class RelaxationProcess(object):
         T_background: the temperature of the background species
         beam_velocity: speed of collision
         first_background: boolean to determine which species is the background
+        include_density: boolean value for maxwellian relaxation processes to set false to improve
+                         numerical integration
         """
-        v_K = self.kinetic_loss_stationary_frequency(n_background, T_background, beam_velocity)
+        v_K = self.kinetic_loss_stationary_frequency(n_background, T_background, beam_velocity, include_density)
 
         m_1 = self._c.p_1.m
         m_2 = self._c.p_2.m
@@ -164,7 +171,7 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
             v_total = np.sqrt((beam_velocity - u) ** 2 + v ** 2 + w ** 2)
 
             # Get stationary collision frequencies
-            stationary_frequency = self.kinetic_loss_stationary_frequency(n_background, T_background, v_total) / n_background
+            stationary_frequency = self.kinetic_loss_stationary_frequency(n_background, T_background, v_total, include_density=False)
 
             # Get Maxwell distribution of plasma
             f_background = (m_background / (2 * np.pi * PhysicalConstants.boltzmann_constant * T_background)) ** 1.5
@@ -200,7 +207,7 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
 
             # Get stationary collision frequencies
             stationary_frequency = self.momentum_loss_stationary_frequency(n_background, T_background, v_total,
-                                                                           first_background) / n_background
+                                                                           first_background, include_density=False)
 
             # Get Maxwell distribution of plasma
             f_background = (m_background / (2 * np.pi * PhysicalConstants.boltzmann_constant * T_background)) ** 1.5
