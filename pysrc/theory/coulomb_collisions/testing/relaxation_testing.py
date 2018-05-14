@@ -116,10 +116,10 @@ def compare_maxwellian_and_stationary_frequencies_against_density(number_density
         # Get maxwellian frequencies
         v = product_relaxation.maxwellian_collisional_frequency(n, temperature, v_alpha)
         maxwellian_frequency[i] = v
-        v_P = product_relaxation.numerical_momentum_loss_maxwellian_frequency(n, temperature, v_alpha, epsrel=1e-2)
+        v_P = product_relaxation.numerical_momentum_loss_maxwellian_frequency(n, temperature, v_alpha, epsrel=1e-8)
         alpha_maxwellian_momentum_frequency[i] = v_P
 
-        print(n, (v_P - v) / v)
+        print(n, v_P, v, np.abs(v_P - v) / v)
 
     fig, ax = plt.subplots()
 
@@ -155,12 +155,10 @@ def compare_maxwellian_and_stationary_frequencies_against_temperature(number_den
         # Get maxwellian frequencies
         v = product_relaxation.maxwellian_collisional_frequency(number_density, T, v_alpha)
         maxwellian_frequency[i] = v
-        v_P = product_relaxation.numerical_momentum_loss_maxwellian_frequency(number_density, T, v_alpha, epsrel=1e-2)
-        alpha_maxwellian_momentum_frequency[i] = v_P[0]
+        v_P = product_relaxation.numerical_momentum_loss_maxwellian_frequency(number_density, T, v_alpha, epsrel=1e-8)
+        alpha_maxwellian_momentum_frequency[i] = v_P
 
-        print(T, v_P[0], v_P[0] - alpha_stationary_momentum_frequency[i], (v_P[0] - v / v))
-
-    print(alpha_maxwellian_momentum_frequency / maxwellian_frequency)
+        print(T, v_P, v_P - alpha_stationary_momentum_frequency[i], np.abs(v_P - v) / v)
 
     fig, ax = plt.subplots()
 
@@ -177,10 +175,10 @@ if __name__ == '__main__':
     # plot_collisional_frequencies()
     # get_maxwellian_collisional_frequencies()
 
-    number_density = np.logspace(20, 30, 5)
-    temperature = 1e3 * UnitConversions.eV_to_K
-    compare_maxwellian_and_stationary_frequencies_against_density(number_density, temperature)
+    # number_density = np.logspace(20, 30, 5)
+    # temperature = 200e3 * UnitConversions.eV_to_K
+    # compare_maxwellian_and_stationary_frequencies_against_density(number_density, temperature)
 
-    # number_density = 1e20
-    # temperature = np.logspace(1, 5, 5) * UnitConversions.eV_to_K
-    # compare_maxwellian_and_stationary_frequencies_against_temperature(number_density, temperature)
+    number_density = 1e20
+    temperature = np.logspace(1, 6, 6) * UnitConversions.eV_to_K
+    compare_maxwellian_and_stationary_frequencies_against_temperature(number_density, temperature)
