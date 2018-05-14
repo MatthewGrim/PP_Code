@@ -160,14 +160,11 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
         oned_variance = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
         v_max = 3 * oned_variance
 
-        max_freq = 1e12
-
         def get_distribution_component(u, v, w):
             v_total = np.sqrt((beam_velocity - u) ** 2 + v ** 2 + w ** 2)
 
             # Get stationary collision frequencies
             stationary_frequency = self.kinetic_loss_stationary_frequency(n_background, T_background, v_total) / n_background
-            stationary_frequency = max_freq if stationary_frequency > max_freq else stationary_frequency
 
             # Get Maxwell distribution of plasma
             f_background = (m_background / (2 * np.pi * PhysicalConstants.boltzmann_constant * T_background)) ** 1.5
@@ -198,15 +195,12 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
         oned_variance = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
         v_max = 3 * oned_variance
 
-        max_freq = 1e12
-
         def get_distribution_component(u, v, w):
             v_total = np.sqrt((beam_velocity - u) ** 2 + v ** 2 + w ** 2)
 
             # Get stationary collision frequencies
             stationary_frequency = self.momentum_loss_stationary_frequency(n_background, T_background, v_total,
                                                                            first_background) / n_background
-            stationary_frequency = max_freq if stationary_frequency > max_freq else stationary_frequency
 
             # Get Maxwell distribution of plasma
             f_background = (m_background / (2 * np.pi * PhysicalConstants.boltzmann_constant * T_background)) ** 1.5
