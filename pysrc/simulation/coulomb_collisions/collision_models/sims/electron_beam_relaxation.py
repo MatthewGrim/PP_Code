@@ -65,8 +65,7 @@ def run_electron_beam_into_stationary_target_sim():
 
     fig, ax = plt.subplots(2, figsize=(10, 10))
 
-    ax[0].plot(t, np.mean(v_results[:n, 0, :] ** 2, axis=0), label="<v_x^2>")
-    ax[0].plot(t, np.mean(v_results[:n, 1, :] ** 2, axis=0), label="<v_y^2>")
+    ax[0].plot(t, np.mean(v_results[:n, 0, :] ** 2 + v_results[:n, 1, :] ** 2, axis=0) / beam_velocity ** 2, label="<v_ort^2>")
     ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0), label="<v_z>")
     ax[0].plot(t, v_z_estimate, linestyle="--", label="<v_z_estimate>")
     ax[0].plot(t, v_ort_estimate, linestyle="--", label="<v_ort_estimate>")
@@ -123,17 +122,24 @@ def run_electon_beam_into_electron_gas_sim():
 
     fig, ax = plt.subplots(2, figsize=(10, 10))
 
-    ax[0].plot(t, np.mean((v_results[:n, 0, :]) ** 2, axis=0) / beam_velocity ** 2, label="<v_x^2>")
-    ax[0].plot(t, np.mean((v_results[:n, 1, :]) ** 2, axis=0) / beam_velocity ** 2, label="<v_y^2>")
-    ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0) / beam_velocity, label="<v_z>")
-    ax[0].plot(t, v_z_estimate, linestyle="--", label="<v_z_estimate>")
-    ax[0].plot(t, v_ort_estimate, linestyle="--", label="<v_ort_estimate>")
+    l_v_z = ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0) / beam_velocity, color="b", label="<v_z>")
+    l_v_z_estimate = ax[0].plot(t, v_z_estimate, linestyle="--", color="c", label="<v_z_estimate>")
     ax[0].set_xlim([0.0, t[-1]])
-    ax[0].set_ylim([0.0, 1.0])
-    ax[0].legend()
     ax[0].set_xlabel("Timestep")
     ax[0].set_ylabel("Velocities ms-1")
+    ax[0].set_ylim([0.0, 1.0])
     ax[0].set_title("Beam Velocities")
+
+    # Twin axes for second plot to replicate paper set up
+    ax_twin = ax[0].twinx()
+    l_ort = ax_twin.plot(t, np.mean(v_results[:n, 0, :] ** 2 + v_results[:n, 1, :] ** 2, axis=0) / beam_velocity ** 2, color="r", label="<v_ort^2>")
+    l_ort_estimate = ax_twin.plot(t, v_ort_estimate, linestyle="--", color="y", label="<v_ort_estimate>")
+    ax_twin.set_ylabel("Square of Velocities (ms-1)^2")
+    ax_twin.set_ylim([0.0, 0.22])
+    
+    lines = l_v_z + l_v_z_estimate + l_ort + l_ort_estimate
+    labs = [l.get_label() for l in lines]
+    ax[0].legend(lines, labs)
 
     ax[1].plot(t, np.mean(v_results[n:, 0, :], axis=0), label="<v_x>")
     ax[1].plot(t, np.mean(v_results[n:, 1, :], axis=0), label="<v_y>")
