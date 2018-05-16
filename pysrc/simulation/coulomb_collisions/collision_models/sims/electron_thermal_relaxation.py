@@ -27,11 +27,7 @@ def get_relaxation_time(p_1, n_background, temperature):
     n_background: number density pof background species
     temperature: temperature characterising beam
     """
-    m_eff = p_1.m / 2.0
-    b_90 = p_1.q ** 2 / (4 * np.pi * PhysicalConstants.epsilon_0)
-    b_90 /= m_eff * np.sqrt(PhysicalConstants.boltzmann_constant * temperature / p_1.m)
-    debye_length = np.sqrt(PhysicalConstants.epsilon_0 * temperature / (n_background * p_1.q ** 2))
-    coulomb_logarithm = np.log(debye_length / b_90)
+    coulomb_logarithm = 10.0
 
     tau = 8.0 * np.pi * np.sqrt(2 * p_1.m * (PhysicalConstants.boltzmann_constant * temperature) ** 3)
     tau *= PhysicalConstants.epsilon_0 ** 2
@@ -45,7 +41,7 @@ def run_electron_thermal_relaxation_sim():
     Run a simulation of single species electron thermal relaxation
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
-    n = int(1e4)
+    n = int(1e5)
 
     sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1)
 
@@ -61,7 +57,7 @@ def run_electron_thermal_relaxation_sim():
 
     # Get simulation time
     tau = get_relaxation_time(p_1, n, T_e)
-    dt = 0.01 * tau
+    dt = 0.02 * tau
     final_time = 12.0 * tau
 
     T_x = np.std(velocities[:, 0], axis=0) ** 2 * p_1.m / (PhysicalConstants.boltzmann_constant)
