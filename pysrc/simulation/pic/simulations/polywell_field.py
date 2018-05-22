@@ -8,7 +8,6 @@ This file contains a solver to obtain the motion of a particle in a polywell B f
 import os
 
 from plasma_physics.pysrc.simulation.pic.fields.magnetic_fields.generic_b_fields import *
-
 from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import *
 
 

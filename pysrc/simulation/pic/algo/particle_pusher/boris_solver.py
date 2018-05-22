@@ -56,5 +56,4 @@ def boris_solver(E_field, B_field, X, V, Q, M, dt):
 
     return X_plus, V_plus
 
-
-
+ 
