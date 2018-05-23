@@ -60,19 +60,31 @@ class AbeCoulombCollisionModel(object):
         # Coulomb logarithm is currently fixed in method
         self.__coulomb_logarithm = 10.0
 
-    def __randomise_velocities(self, vel):
+    def __randomise_velocities(self, vel, *args):
         """
         Randomise the addresses of particles from each species. In such a way
         pairs of particles in adjacent indices are formed for collisions
 
         vel: Nx3 array of velocity components for particles, the velocities
              contain the particles of each species sequentially, N = n_1 + n_2
+        *args: Should contain a list of Nxn arrays that correspond to different
+               particle parameters, such as position, etc.
         """
+        current_state = np.random.get_state()
         if self.__single_species:
             np.random.shuffle(vel)
+            for arg in args:
+                np.random.set_state(current_state)
+                np.random.shuffle(arg)
         else:
             np.random.shuffle(vel[:self.__n_1, :])
             np.random.shuffle(vel[self.__n_1:, :])
+            for arg in args:
+                np.random.set_state(current_state)
+                np.random.shuffle(arg[:self.__n_1, :])
+                np.random.shuffle(arg[self.__n_1:, :])
+
+
 
     def calculate_post_collision_velocities(self, v_1, v_2, dt):
         """
@@ -117,13 +129,15 @@ class AbeCoulombCollisionModel(object):
 
         return new_v_1, new_v_2
 
-    def single_time_step(self, vel, dt):
+    def single_time_step(self, vel, dt, *args):
         """
         Carry out a single time step of simulation
 
         vel: Nx3 array of velocity components for particles, the velocities
              contain the particles of each species sequentially, N = n_1 + n_2
         dt: timestep size
+        *args: Should contain a list of Nxn arrays that correspond to different
+               particle parameters, such as position, etc.
         """
         # Function is not implemented for multiple species, or odd particle
         # number
@@ -131,7 +145,7 @@ class AbeCoulombCollisionModel(object):
             assert(self.__n_1 % 2 == 0), "Uneven number of particles is not implemented"
 
             # Step 1 - Randomly change addresses of velocities, for each species
-            self.__randomise_velocities(vel)
+            self.__randomise_velocities(vel, *args)
 
             # Step 2 - Calculate post-collisional velocities
             new_vel = np.zeros(vel.shape)
@@ -159,7 +173,10 @@ class AbeCoulombCollisionModel(object):
                 new_vel[idx_1, :] = new_v_1
                 new_vel[idx_2, :] = v_2 if self.__freeze_species_2 else new_v_2
 
-        return new_vel
+        if len(args) == 0:
+            return new_vel
+        else: 
+            return new_vel, args
 
     def run_sim(self, vel, dt, final_time):
         """

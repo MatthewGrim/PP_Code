@@ -15,6 +15,8 @@ from plasma_physics.pysrc.simulation.pic.algo.geometry.vector_ops import *
 from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import *
 from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import ChargedParticle
 
+from plasma_physics.pysrc.simulation.coulomb_collisions.abe_collision_model imort AbeCoulombCollisionModel
+
 from plasma_physics.pysrc.utils.physical_constants  import PhysicalConstants
 
 
@@ -27,6 +29,9 @@ def run_1d_electrostatic_well(radius, num_particles=int(1e3)):
     # Define particles
     charge = 1.602e-19
     particle = ChargedParticle(3.344496935079999e-27, charge, np.asarray([radius, 0.0, 0.0]), np.asarray([0.0, 0.0, 0.0]))
+
+    # Define collision model
+    collision_model = AbeCoulombCollisionModel(num_particles, particle, weight)
 
     # Define fields
     electron_charge_density = 1e18 * PhysicalConstants.electron_charge
@@ -75,11 +80,14 @@ def run_1d_electrostatic_well(radius, num_particles=int(1e3)):
             velocities[i, :, :] = V
             continue
 
-        # Update 
+        # Update position and velocity due to field
         dt = times[i] - times[i - 1]
         x = X + V + 0.5 * dt if i == 1 else X + V * dt
         E = e_field(x)
         v = V + E * particle.charge / particle.mass * dt
+
+        # Update velocity due to collisions
+        new_v = collision_model.single_time_step(v, dt, x)
 
         positions[i, :, :] = x
         velocities[i, :, :] = v
