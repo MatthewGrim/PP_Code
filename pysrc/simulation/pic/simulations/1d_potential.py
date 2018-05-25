@@ -22,14 +22,14 @@ from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import 
 from plasma_physics.pysrc.utils.physical_constants  import PhysicalConstants
 
 
-def run_1d_electrostatic_well(radius, num_particles=int(1e3)):
+def run_1d_electrostatic_well(radius, num_particles=int(1e4)):
     """
     Function to run simulation - for this simulation, in a spherically symmetric potential well
 
     radius: size of potential well
     """
     # Define particles
-    number_density = 1e8
+    number_density = 1e12
     charge = 1.602e-19
     weight = int(number_density / num_particles)
     pic_particle = PICParticle(3.344496935079999e-27 * weight, charge * weight, np.asarray([radius, 0.0, 0.0]), np.asarray([0.0, 0.0, 0.0]))
