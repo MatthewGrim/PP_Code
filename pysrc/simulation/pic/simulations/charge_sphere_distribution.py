@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from plasma_physics.pysrc.simulation.pic.algo.fields.electric_fields.generic_e_fields import PointField
 from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import boris_solver
-from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import ChargedParticle
+from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import PICParticle
 
 
 def E_field_example():
@@ -20,7 +20,7 @@ def E_field_example():
 
     :return:
     """
-    particle = ChargedParticle(1.6e-27, 1.6e-19, np.asarray([0.1, 0.0, 0.0]), np.asarray([0.0, 0.1, 0.0]))
+    particle = PICParticle(1.6e-27, 1.6e-19, np.asarray([0.1, 0.0, 0.0]), np.asarray([0.0, 0.1, 0.0]))
     field = PointField(-1.6e-19, 0.1, np.zeros(3))
 
     def B_field(x):

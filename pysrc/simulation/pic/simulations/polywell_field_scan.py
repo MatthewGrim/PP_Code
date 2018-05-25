@@ -38,11 +38,11 @@ def B_field_example_multi(particle_type, vel):
     :return:
     """
     if particle_type is ParticleType.ALPHA:
-        particle = ChargedParticle(6.64e-27, 3.2e-19, np.asarray([0.0, 0.0, 0.0]), vel)
+        particle = PICParticle(6.64e-27, 3.2e-19, np.asarray([0.0, 0.0, 0.0]), vel)
     elif particle_type is ParticleType.PROTON:
-        particle = ChargedParticle(3.32e-27, 1.6e-19, np.asarray([0.0, 0.0, 0.0]), vel)
+        particle = PICParticle(3.32e-27, 1.6e-19, np.asarray([0.0, 0.0, 0.0]), vel)
     elif particle_type is ParticleType.ELECTRON:
-        particle = ChargedParticle(9.1e-31, 1.6e-19, np.asarray([0.0, 0.0, 0.0]), vel)
+        particle = PICParticle(9.1e-31, 1.6e-19, np.asarray([0.0, 0.0, 0.0]), vel)
     else:
         raise ValueError("Invalid value")
 

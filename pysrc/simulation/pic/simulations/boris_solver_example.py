@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import boris_solver
-from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import ChargedParticle
+from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import PICParticle
 from plasma_physics.pysrc.simulation.pic.simulations.analytic_single_particle_motion import solve_B_field
 
 
@@ -53,7 +53,7 @@ def single_particle_example(b_field=np.asarray([0.0, 0.0, 1.0]),
         X = x
         V = v
 
-    particle = ChargedParticle(1.0, Q[0], X_0[0], V_0[0])
+    particle = PICParticle(1.0, Q[0], X_0[0], V_0[0])
     B = b_field
     analytic_times, analytic_positions = solve_B_field(particle, B, 4.0)
 

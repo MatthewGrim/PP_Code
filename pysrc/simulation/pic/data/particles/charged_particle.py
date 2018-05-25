@@ -8,7 +8,7 @@ This file contains a simple class for modelling a charged particle for modelling
 import numpy as np
 
 
-class ChargedParticle(object):
+class PICParticle(object):
     """
     A charge particle that acts as a struct to store the properties of the charged particle
     """

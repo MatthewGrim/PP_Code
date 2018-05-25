@@ -100,7 +100,7 @@ if __name__ == '__main__':
 
         # particle = ChargedParticle(6.64e-27, 3.2e-19, np.asarray([0.0, 0.0, 0.0]), vel)
         # particle = ChargedParticle(3.32e-27, 1.6e-19, np.asarray([0.0, 0.0, 0.0]), vel)
-        particle = ChargedParticle(9.1e-31, 1.6e-19, np.asarray([0.0, 0.0, 0.0]), vel)
+        particle = PICParticle(9.1e-31, 1.6e-19, np.asarray([0.0, 0.0, 0.0]), vel)
 
         B_field_example_single(particle, vel)
 

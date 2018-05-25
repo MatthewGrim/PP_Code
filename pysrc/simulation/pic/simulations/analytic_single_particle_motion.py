@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 from plasma_physics.pysrc.simulation.pic.algo.geometry.vector_ops import dot, magnitude, vector_projection, cross, arbitrary_axis_rotation_3d
-from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import ChargedParticle
+from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import PICParticle
 
 
 def solve_B_field(particle, B, final_time, num_pts=1000):
@@ -103,7 +103,7 @@ def B_field_example():
     Example B field solution
     :return:
     """
-    particle = ChargedParticle(1.0, 2.0, np.asarray([1.0, 0.0, 0.0]), np.asarray([0.0, 1.0, 1.0]))
+    particle = PICParticle(1.0, 2.0, np.asarray([1.0, 0.0, 0.0]), np.asarray([0.0, 1.0, 1.0]))
     B = np.asarray([0.0, 0.0, 1.0])
 
     times, positions = solve_B_field(particle, B, 3.0)
@@ -119,7 +119,7 @@ def E_field_example():
     Example E field solution
     :return:
     """
-    particle = ChargedParticle(1.0, 2.0, np.asarray([1.0, 0.0, 0.0]), np.asarray([0.0, 1.0, 0.0]))
+    particle = PICParticle(1.0, 2.0, np.asarray([1.0, 0.0, 0.0]), np.asarray([0.0, 1.0, 0.0]))
     E = np.asarray([0.0, 0.0, 3.0])
 
     times, positions = solve_E_field(particle, E, 3.0)
@@ -135,7 +135,7 @@ def aligned_fields_examples():
     Example of parallel fields solution
     :return:
     """
-    particle = ChargedParticle(1.0, 2.0, np.asarray([1.0, 0.0, 0.0]), np.asarray([0.0, 1.0, 0.0]))
+    particle = PICParticle(1.0, 2.0, np.asarray([1.0, 0.0, 0.0]), np.asarray([0.0, 1.0, 0.0]))
     E = np.asarray([0.0, 0.0, 3.0])
     B = np.asarray([0.0, 0.0, 3.0])
 
