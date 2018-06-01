@@ -81,6 +81,23 @@ def run_sim():
 
     plt.show()
 
+    energy = np.sum(v_results[:, 0, :] ** 2 + v_results[:, 1, :] ** 2 + v_results[:, 2, :] ** 2, axis=0)
+    x_mom = np.sum(v_results[:, 0, :], axis=0)
+    y_mom = np.sum(v_results[:, 1, :], axis=0)
+    z_mom = np.sum(v_results[:, 2, :], axis=0)
+
+    fig, ax = plt.subplots(2)
+
+    ax[0].plot(t, energy)
+    ax[0].set_title("Conservation of Energy")
+    ax[1].plot(t, x_mom, label="x momentum")
+    ax[1].plot(t, y_mom, label="y momentum")
+    ax[1].plot(t, z_mom, label="z momentum")
+    ax[1].legend()
+    ax[1].set_title("Conservation of Momentum")
+
+    fig.suptitle("Conservation Plots")
+    plt.show()
 
 if __name__ == '__main__':
     run_sim()

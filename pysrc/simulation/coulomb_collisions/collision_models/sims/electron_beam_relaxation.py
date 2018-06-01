@@ -152,6 +152,25 @@ def run_electon_beam_into_electron_gas_sim():
 
     plt.show()
 
+    energy = p_1.m * np.sum(v_results[:n, 0, :] ** 2 + v_results[:n, 1, :] ** 2 + v_results[:n, 2, :] ** 2, axis=0)
+    energy += p_2.m * np.sum(v_results[n:, 0, :] ** 2 + v_results[n:, 1, :] ** 2 + v_results[n:, 2, :] ** 2, axis=0)
+    x_mom = p_1.m * np.sum(v_results[:n, 0, :], axis=0) + p_2.m * np.sum(v_results[n:, 0, :], axis=0)
+    y_mom = p_1.m * np.sum(v_results[:n, 1, :], axis=0) + p_1.m * np.sum(v_results[n:, 1, :], axis=0)
+    z_mom = p_1.m * np.sum(v_results[:n, 2, :], axis=0) + p_1.m * np.sum(v_results[n:, 2, :], axis=0)
+
+    fig, ax = plt.subplots(2)
+
+    ax[0].plot(t, energy)
+    ax[0].set_title("Conservation of Energy")
+    ax[1].plot(t, x_mom, label="x momentum")
+    ax[1].plot(t, y_mom, label="y momentum")
+    ax[1].plot(t, z_mom, label="z momentum")
+    ax[1].legend()
+    ax[1].set_title("Conservation of Momentum")
+
+    fig.suptitle("Conservation Plots")
+    plt.show()
+
 
 if __name__ == '__main__':
     # run_electron_beam_into_stationary_target_sim()

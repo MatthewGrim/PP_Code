@@ -41,7 +41,7 @@ def run_electron_thermal_relaxation_sim():
     Run a simulation of single species electron thermal relaxation
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
-    n = int(1e5)
+    n = int(1e4)
 
     sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1)
 
@@ -89,6 +89,24 @@ def run_electron_thermal_relaxation_sim():
     ax.set_ylabel("Temperature")
     ax.set_title("Electron thermal relaxation")
 
+    plt.show()
+
+    energy = np.sum(v_results[:, 0, :] ** 2 + v_results[:, 1, :] ** 2 + v_results[:, 2, :] ** 2, axis=0)
+    x_mom = np.sum(v_results[:, 0, :], axis=0)
+    y_mom = np.sum(v_results[:, 1, :], axis=0)
+    z_mom = np.sum(v_results[:, 2, :], axis=0)
+
+    fig, ax = plt.subplots(2)
+
+    ax[0].plot(t, energy)
+    ax[0].set_title("Conservation of Energy")
+    ax[1].plot(t, x_mom, label="x momentum")
+    ax[1].plot(t, y_mom, label="y momentum")
+    ax[1].plot(t, z_mom, label="z momentum")
+    ax[1].legend()
+    ax[1].set_title("Conservation of Momentum")
+
+    fig.suptitle("Conservation Plots")
     plt.show()
 
 
