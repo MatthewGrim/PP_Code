@@ -166,8 +166,8 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
         :return:
         """
         m_background = self._c.p_1.m if first_background else self._c.p_2.m
-        oned_variance = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
-        v_max = 3 * oned_variance
+        thermal_velocity = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
+        v_max = 3 * thermal_velocity
 
         def get_distribution_component(u, v, w):
             v_total = np.sqrt((beam_velocity - u) ** 2 + v ** 2 + w ** 2)
@@ -176,8 +176,8 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
             stationary_frequency = self.kinetic_loss_stationary_frequency(n_background, T_background, v_total, include_density=False)
 
             # Get Maxwell distribution of plasma
-            f_background = (m_background / (2 * np.pi * PhysicalConstants.boltzmann_constant * T_background)) ** 1.5
-            f_background *= np.exp(-m_background * (u ** 2 + v ** 2 + w ** 2) / (2 * PhysicalConstants.boltzmann_constant * T_background))
+            f_background = (1.0 / (2 * np.pi * thermal_velocity ** 2)) ** 1.5
+            f_background *= np.exp(-(u ** 2 + v ** 2 + w ** 2) / (2 * thermal_velocity ** 2))
 
             return f_background * stationary_frequency
 
@@ -188,7 +188,7 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
         return n_background * v_K[0]
 
     def monte_carlo_kinetic_loss_maxwellian_frequency(self, n_background, T_background, beam_velocity,
-                                                      first_background=True, num_samples=10000000):
+                                                      first_background=True, num_samples=100000000):
         """
         Calculate the collision frequency for kinetic losses in a Maxwellian background. This value is 
         calculated stochastically, using a Monte Carlo integral.
@@ -199,42 +199,21 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
         first_background: boolean to determine which species is the background
         """
         m_background = self._c.p_1.m if first_background else self._c.p_2.m
-        oned_variance = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
-        v_max = 3 * oned_variance
-        print(oned_variance)
+        thermal_velocity = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
+        v_max = 3 * thermal_velocity
 
-        def distribution_component(vel_components):
-            """
-            Integrand function to get the collisional frequency at a particular point in the distribution 
-            
-            vel_components: 1x3 array containing velocity components of background species
-            """ 
-            u = vel_components[0]
-            v = vel_components[1]
-            w = vel_components[2]
-            v_total = np.sqrt((beam_velocity - u) ** 2 + v ** 2 + w ** 2)
-
-            # Get stationary collision frequencies
-            stationary_frequency = self.kinetic_loss_stationary_frequency(n_background, T_background, v_total, include_density=False)
-            return stationary_frequency
-
-        def sampler():
-            """
-            Generate random samples for integral in the required domain
-            """
-            while True:
-                u = random.uniform(-v_max, v_max)
-                v = random.uniform(-v_max, v_max)
-                w = random.uniform(-v_max, v_max) 
-                yield (u, v, w)
-
-        # Perform integration
-        domain_size = (2.0 * v_max) ** 3
         np.random.seed(1)
-        result, error = mcint.integrate(distribution_component, sampler(), measure=domain_size, n=num_samples)
-        # assert error < 0.01 * result, "{}, {}".format(error, result)
+        u = np.random.normal(loc=beam_velocity, scale=thermal_velocity, size=(num_samples,))
+        v = np.random.normal(loc=0.0, scale=thermal_velocity, size=(num_samples,))
+        w = np.random.normal(loc=0.0, scale=thermal_velocity, size=(num_samples,))
+        v_total = u ** 2 + v ** 2 + w ** 2
 
-        return n_background * result
+        pdf = 1.0 / np.sqrt(2 * np.pi * thermal_velocity ** 2) ** 3 * np.exp(-v_total / (2 * thermal_velocity ** 2))
+        stationary_frequency = self.kinetic_loss_stationary_frequency(n_background, T_background, v_total)
+        integrand = stationary_frequency / pdf
+        monte_carlo_frequency = np.mean(integrand)
+
+        return monte_carlo_frequency
 
 
     def numerical_momentum_loss_maxwellian_frequency(self, n_background, T_background, beam_velocity,
@@ -251,8 +230,8 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
         :return:
         """
         m_background = self._c.p_1.m if first_background else self._c.p_2.m
-        oned_variance = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
-        v_max = 3 * oned_variance
+        thermal_velocity = np.sqrt(PhysicalConstants.boltzmann_constant * T_background / m_background)
+        v_max = 3 * thermal_velocity
 
         def get_distribution_component(u, v, w):
             v_total = np.sqrt((beam_velocity - u) ** 2 + v ** 2 + w ** 2)
@@ -262,8 +241,8 @@ class MaxwellianRelaxationProcess(RelaxationProcess):
                                                                            first_background, include_density=False)
 
             # Get Maxwell distribution of plasma
-            f_background = (m_background / (2 * np.pi * PhysicalConstants.boltzmann_constant * T_background)) ** 1.5
-            f_background *= np.exp(-m_background * (u ** 2 + v ** 2 + w ** 2) / (2 * PhysicalConstants.boltzmann_constant * T_background))
+            f_background = (1.0 / (2 * np.pi * thermal_velocity ** 2)) ** 1.5
+            f_background *= np.exp(-(u ** 2 + v ** 2 + w ** 2) / (2 * thermal_velocity ** 2))
 
             return f_background * stationary_frequency
 

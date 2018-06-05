@@ -52,28 +52,26 @@ def get_thermalisation_rate(n, T, relaxation_process, beam_velocity, reaction_na
 	assert isinstance(relaxation_process, RelaxationProcess)
 
 	# Get stationary frequency
-	stationary_frequency =  1.0 / relaxation_process.kinetic_loss_stationary_frequency(n, T, beam_velocity)
+	stationary_frequency =  relaxation_process.kinetic_loss_stationary_frequency(n, T, beam_velocity)
 	
 	# Get maxwellian frequency
 	print(reaction_name)
-	file_name = "maxwellian_frequencies_{}".format(reaction_name)
-	file_path = os.path.join("data", file_name)
-	if not os.path.exists(file_path) or force_calculation:
-		if isinstance(n, np.ndarray):
-			maxwellian_frequency = np.zeros(stationary_frequency.shape)
-			for i, number_density in enumerate(n):
-				print(i)
-				# maxwellian_frequency[i] = relaxation_process.numerical_kinetic_loss_maxwellian_frequency(number_density, T, beam_velocity)
-				maxwellian_frequency[i] = relaxation_process.maxwellian_collisional_frequency(number_density, T, beam_velocity)
-
-			# Save result to file
-			np.savetxt(file_name, maxwellian_frequency)
-		else:
-			maxwellian_frequency = relaxation_process.numerical_kinetic_loss_maxwellian_frequency(n, T, beam_velocity)
+	if isinstance(n, np.ndarray):
+		theoretical_maxwellian_frequency = np.zeros(stationary_frequency.shape)
+		numerical_maxwellian_frequency = np.zeros(stationary_frequency.shape)
+		monte_carlo_maxwellian_frequency = np.zeros(stationary_frequency.shape)
+		for i, number_density in enumerate(n):
+			print(i)
+			theoretical_maxwellian_frequency[i] = relaxation_process.maxwellian_collisional_frequency(number_density, T, beam_velocity)
+			numerical_maxwellian_frequency[i] = relaxation_process.numerical_kinetic_loss_maxwellian_frequency(number_density, T, beam_velocity)
+			monte_carlo_maxwellian_frequency[i] = relaxation_process.monte_carlo_kinetic_loss_maxwellian_frequency(number_density, T, beam_velocity)
 	else:
-		maxwellian_frequency = np.loadtxt(file_path)
+		theoretical_maxwellian_frequency = relaxation_process.maxwellian_collisional_frequency(n, T, beam_velocity)
+		numerical_maxwellian_frequency = relaxation_process.numerical_kinetic_loss_maxwellian_frequency(n, T, beam_velocity)
+		monte_carlo_maxwellian_frequency = relaxation_process.monte_carlo_kinetic_loss_maxwellian_frequency(number_density, T, beam_velocity)
 
-	return stationary_frequency, 1.0 / maxwellian_frequency
+
+	return 1.0 / stationary_frequency, 1.0 / theoretical_maxwellian_frequency, 1.0 / numerical_maxwellian_frequency, 1.0 / monte_carlo_maxwellian_frequency 
 
 
 if __name__ == '__main__':
@@ -112,8 +110,8 @@ if __name__ == '__main__':
 	relaxation_process = MaxwellianRelaxationProcess(collision)
 
 	# Get thermalisation rate
-	t_thermalisation_stationary, t_thermalisation_maxwellian = get_thermalisation_rate(n, T_K, relaxation_process, beam_velocity, reaction_name=reaction_name,
-		                                                                               force_calculation=False)
+	t_stationary, t_maxwellian, t_numerical, t_monte = get_thermalisation_rate(n, T_K, relaxation_process, beam_velocity, reaction_name=reaction_name,
+		                                                                       force_calculation=True)
 
 	# Get fusion reaction rate
 	t_fus = get_fusion_timescale(n, T_keV, reaction)
@@ -121,11 +119,15 @@ if __name__ == '__main__':
 	fig, ax = plt.subplots(2, figsize=(10, 10))
 	
 	ax[0].loglog(n, t_fus, label="Fusion Reaction")
-	ax[0].loglog(n, t_thermalisation_stationary, label="Stationary Thermalisation Rate")
-	ax[0].loglog(n, t_thermalisation_maxwellian, label="Maxwellian Thermalisation Rate")
+	ax[0].loglog(n, t_stationary, label="Stationary Thermalisation Rate")
+	ax[0].loglog(n, t_maxwellian, label="Maxwellian Thermalisation Rate")
+	ax[0].loglog(n, t_numerical, label="Numerical Maxwellian Thermalisation Rate")
+	ax[0].loglog(n, t_monte, label="Monte Carlo Maxwellian Thermalisation Rate")
 	
-	ax[1].loglog(n, t_thermalisation_stationary / t_fus, label="Stationary Thermalisation Rate")
-	ax[1].loglog(n, t_thermalisation_maxwellian / t_fus, label="Maxwellian Thermalisation Rate")
+	ax[1].loglog(n, t_stationary / t_fus, label="Stationary Thermalisation Rate")
+	ax[1].loglog(n, t_maxwellian / t_fus, label="Maxwellian Thermalisation Rate")
+	ax[1].loglog(n, t_numerical / t_fus, label="Numerical Maxwellian Thermalisation Rate")
+	ax[1].loglog(n, t_monte / t_fus, label="Monte Carlo Maxwellian Thermalisation Rate")
 
 	ax[0].set_ylabel("Seconds")
 	ax[0].set_xlabel("Number density")
