@@ -59,7 +59,7 @@ class AbeCoulombCollisionModel(object):
             self.__m_eff = self.__m_1 ** 2 / (2 * self.__m_1)
 
         # Coulomb logarithm is currently fixed in method
-        self.__coulomb_logarithm = 10.0
+        self.__coulomb_logarithm = coulomb_logarithm
 
     def __randomise_velocities(self, vel):
         """
