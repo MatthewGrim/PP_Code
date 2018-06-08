@@ -7,6 +7,7 @@ This file contains code to validate figure 2 in the paper:
 Theory of cumulative angle scattering in plasmas - K. Nanbu
 """
 
+import os
 import numpy as np
 import scipy.integrate as integrate
 import matplotlib.pyplot as plt
@@ -56,7 +57,7 @@ def get_expectation_of_theta(theta_min):
 
 	return integrate.quad(func, 0.0, 1.0)[0]
 
-def simulate_expectation(theta_min, num_particles=2000, n=500):
+def simulate_expectation(theta_min, num_particles=2000, n=500, plot_result=False):
 	results = np.zeros((num_particles, n))
 	file_name = "sin_chi_squared_{}_{}_{}".format(num_particles, n, theta_min)
 	if os.path.exists(file_name):
@@ -80,20 +81,22 @@ def simulate_expectation(theta_min, num_particles=2000, n=500):
 	
 	results = np.mean(results ** 2, axis=0)
 
-	plt.figure()
-	plt.plot(results)
-	plt.show()
+	if plot_result:
+		plt.figure()
+		plt.plot(results)
+		plt.show()
 
 
 
 if __name__ == '__main__':
-	theta_min = 1.0 / 180.0 * np.pi
-	theta_2_expectation = get_expectation_of_theta(theta_min)
-	print(theta_min, theta_2_expectation)
+	for theta in np.logspace(-2, 1, 4):
+		theta_min = theta / 180.0 * np.pi
+		theta_2_expectation = get_expectation_of_theta(theta_min)
+		print(theta_min, theta_2_expectation)
 
-	n = int(6.0 / (0.5 * theta_2_expectation))
-	num_particles=20000
-	simulate_expectation(theta_min, num_particles=num_particles, n=n)
+		n = 1000
+		num_particles=20000
+		simulate_expectation(theta_min, num_particles=num_particles, n=n)
 
 
 
