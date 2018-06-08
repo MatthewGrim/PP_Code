@@ -13,12 +13,15 @@ from mpl_toolkits.mplot3d import Axes3D
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
 from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess
 from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.abe_collison_model import AbeCoulombCollisionModel
+from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
-def run_sim():
+def run_sim(sim_type):
     """
     Runs simulation of a single species in a uniform velocity distribution
+    
+    sim_type: Instances of simulation class for coulomb collisions
     """
     # Set seed
     np.random.seed(1)
@@ -29,7 +32,7 @@ def run_sim():
     weight = 1
     weighted_particle = ChargedParticle(2.01410178 * 1.66054e-27 * weight,
                                         PhysicalConstants.electron_charge * weight)
-    sim = AbeCoulombCollisionModel(n, particle, weight)
+    sim = sim_type(n, particle, weight)
 
     # Get initial uniform velocities
     velocities = np.random.uniform(-1.0, 1.0, size=(n, 3))
@@ -45,11 +48,18 @@ def run_sim():
 
     t, v_results = sim.run_sim(velocities, dt, final_time)
 
+    post_process_results(t, v_results)
+
+
+def post_process_results(t, v_results):
+    """
+    Determine whether distribution becomes Maxwellian and test conservation
+    """
     # Get average momentum in each direction - this should be where
     # the normal distribution is centred
-    v_x_ave_init = np.average(velocities[:, 0])
-    v_y_ave_init = np.average(velocities[:, 1])
-    v_z_ave_init = np.average(velocities[:, 2])
+    v_x_ave_init = np.average(v_results[:, 0, 0])
+    v_y_ave_init = np.average(v_results[:, 1, 0])
+    v_z_ave_init = np.average(v_results[:, 2, 0])
     print("Initial average x velocity: {}".format(v_x_ave_init))
     print("Initial average y velocity: {}".format(v_y_ave_init))
     print("Initial average z velocity: {}\n".format(v_z_ave_init))
@@ -67,17 +77,17 @@ def run_sim():
 
     fig, ax = plt.subplots(3, 3, figsize=(10, 10))
 
-    ax[0, 0].hist(velocities[:, 0], 100)
-    ax[0, 1].hist(velocities[:, 1], 100)
-    ax[0, 2].hist(velocities[:, 2], 100)
+    ax[0, 0].hist(v_results[:, 0, 0], 100)
+    ax[0, 1].hist(v_results[:, 1, 0], 100)
+    ax[0, 2].hist(v_results[:, 2, 0], 100)
 
     ax[1, 0].hist(v_results[:, 0, -1], 100)
     ax[1, 1].hist(v_results[:, 1, -1], 100)
     ax[1, 2].hist(v_results[:, 2, -1], 100)
 
-    ax[2, 0].hist(v_results[:, 0, -1] - velocities[:, 0], 1000)
-    ax[2, 1].hist(v_results[:, 1, -1] - velocities[:, 1], 1000)
-    ax[2, 2].hist(v_results[:, 2, -1] - velocities[:, 2], 1000)
+    ax[2, 0].hist(v_results[:, 0, -1] - v_results[:, 0, 0], 1000)
+    ax[2, 1].hist(v_results[:, 1, -1] - v_results[:, 1, 0], 1000)
+    ax[2, 2].hist(v_results[:, 2, -1] - v_results[:, 2, 0], 1000)
 
     plt.show()
 
@@ -100,4 +110,6 @@ def run_sim():
     plt.show()
 
 if __name__ == '__main__':
-    run_sim()
+    sim_type = AbeCoulombCollisionModel
+    # sim_type = NanbuCollisionModel
+    run_sim(sim_type)
