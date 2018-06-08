@@ -12,6 +12,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.abe_collison_model import AbeCoulombCollisionModel
+from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
 from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
@@ -36,14 +37,14 @@ def get_relaxation_time(p_1, n_background, temperature):
     return tau
 
 
-def run_electron_thermal_relaxation_sim():
+def run_electron_thermal_relaxation_sim(sim_type):
     """
     Run a simulation of single species electron thermal relaxation
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     n = int(1e4)
 
-    sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1)
+    sim = sim_type(n, p_1, 1)
 
     T_y = 11500.0
     T_factor = 1.3
@@ -111,4 +112,6 @@ def run_electron_thermal_relaxation_sim():
 
 
 if __name__ == '__main__':
-    run_electron_thermal_relaxation_sim()
+    sim_type = AbeCoulombCollisionModel
+    sim_type = NanbuCollisionModel
+    run_electron_thermal_relaxation_sim(sim_type)
