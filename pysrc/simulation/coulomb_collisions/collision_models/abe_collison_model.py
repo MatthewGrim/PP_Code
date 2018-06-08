@@ -80,12 +80,12 @@ class AbeCoulombCollisionModel(object):
         else:
             np.random.shuffle(vel[:self.__n_1, :])
             np.random.shuffle(vel[self.__n_1:, :])
-            
+            np.random.set_state(current_state)
+
             np.random.shuffle(indices[:self.__n_1])
             np.random.shuffle(indices[self.__n_1:])
 
         return indices
-
 
     def calculate_post_collision_velocities(self, v_1, v_2, dt):
         """
@@ -129,7 +129,6 @@ class AbeCoulombCollisionModel(object):
         new_v_2 = v_2 - self.__m_eff / self.__m_2 * du
 
         return new_v_1, new_v_2
-
 
     def single_time_step(self, vel, dt):
         """
