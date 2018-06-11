@@ -193,6 +193,9 @@ class AbeCoulombCollisionModel(object):
             assert vel.shape[0] == self.__n_1 + self.__n_2
         assert vel.shape[1] == 3
 
+        # Set seed
+        np.random.seed(1)
+
         num_steps = int(math.ceil(final_time / dt) + 1)
         vel_results = np.zeros((vel.shape[0], vel.shape[1], num_steps))
         vel_results[:, :, 0] = vel

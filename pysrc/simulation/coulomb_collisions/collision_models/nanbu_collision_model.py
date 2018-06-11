@@ -156,6 +156,8 @@ class NanbuCollisionModel(object):
         indices = np.asarray(range(velocities.shape[0]))
         velocities_A = velocities[:n, :]
         velocities_B = velocities[n:, :]
+        np.random.shuffle(velocities_A)
+        np.random.shuffle(velocities_B)
         np.random.set_state(current_state)
         np.random.shuffle(indices[:n])
         np.random.shuffle(indices[n:])
@@ -196,6 +198,9 @@ class NanbuCollisionModel(object):
         """
         assert velocities.shape[0] == np.sum(self.__number_densities)
         assert velocities.shape[1] == 3
+
+        # Set seed before simulation
+        np.random.seed(1)
 
         num_steps = int(math.ceil(final_time / dt) + 1)
         vel_results = np.zeros((velocities.shape[0], velocities.shape[1], num_steps))

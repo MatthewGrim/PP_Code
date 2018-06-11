@@ -41,6 +41,9 @@ def run_electron_thermal_relaxation_sim(sim_type):
     """
     Run a simulation of single species electron thermal relaxation
     """
+    # Set seed
+    np.random.seed(1)
+    
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     n = int(1e4)
 
@@ -112,6 +115,6 @@ def run_electron_thermal_relaxation_sim(sim_type):
 
 
 if __name__ == '__main__':
-    sim_type = AbeCoulombCollisionModel
+    # sim_type = AbeCoulombCollisionModel
     sim_type = NanbuCollisionModel
     run_electron_thermal_relaxation_sim(sim_type)
