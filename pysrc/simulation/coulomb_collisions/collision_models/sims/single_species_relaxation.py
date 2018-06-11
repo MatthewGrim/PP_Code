@@ -75,7 +75,7 @@ def post_process_results(t, v_results):
     print("Change in average y velocity: {}".format(v_y_ave_fin - v_y_ave_init))
     print("Change in average z velocity: {}".format(v_z_ave_fin - v_z_ave_init))
 
-    fig, ax = plt.subplots(3, 3, figsize=(10, 10))
+    fig, ax = plt.subplots(2, 3, figsize=(10, 10))
 
     ax[0, 0].hist(v_results[:, 0, 0], 100)
     ax[0, 1].hist(v_results[:, 1, 0], 100)
@@ -84,10 +84,6 @@ def post_process_results(t, v_results):
     ax[1, 0].hist(v_results[:, 0, -1], 100)
     ax[1, 1].hist(v_results[:, 1, -1], 100)
     ax[1, 2].hist(v_results[:, 2, -1], 100)
-
-    ax[2, 0].hist(v_results[:, 0, -1] - v_results[:, 0, 0], 1000)
-    ax[2, 1].hist(v_results[:, 1, -1] - v_results[:, 1, 0], 1000)
-    ax[2, 2].hist(v_results[:, 2, -1] - v_results[:, 2, 0], 1000)
 
     plt.show()
 
@@ -111,5 +107,5 @@ def post_process_results(t, v_results):
 
 if __name__ == '__main__':
     sim_type = AbeCoulombCollisionModel
-    # sim_type = NanbuCollisionModel
+    sim_type = NanbuCollisionModel
     run_sim(sim_type)

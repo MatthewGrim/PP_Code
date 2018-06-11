@@ -51,10 +51,12 @@ class NanbuCollisionModel(object):
         else:
             raise RuntimeError("number_densities must be either a float or numpy array")
 
-
         # Prevent multi-component simulations
         if self.__num_species > 2:
             raise RuntimeError("Multicomponent species are currently not handled")
+
+        # Define temperatures of plasma - this will be set at the beginning of the simulation
+        self.temperature = None
 
         # Generator interpolator for A
         data_file = os.path.join("/home/rohan/Code/plasma_physics/pysrc/simulation/coulomb_collisions/collision_models", "data", "A_interpolation_values.txt")
@@ -81,7 +83,7 @@ class NanbuCollisionModel(object):
         b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_mag ** 2)
 
         # Calculate coulomb logarithm
-        T_background = 1000.0
+        T_background = self.temperature
         debye_length = PhysicalConstants.epsilon_0 * T_background
         debye_length /= n * PhysicalConstants.electron_charge ** 2
         debye_length = np.sqrt(debye_length)
@@ -114,15 +116,14 @@ class NanbuCollisionModel(object):
 
         return A
 
-    def __calculate_chi(self, A):
+    def __calculate_cos_chi(self, A):
         assert not np.any(A == 0)
         U = np.random.uniform(0, 1, A.shape)
         cos_chi = 1 / A * np.log(np.exp(-A) + 2 * U * np.sinh(A))
-        chi = np.arccos(cos_chi)
+        
+        return cos_chi
 
-        return chi
-
-    def __calculate_post_collision_velocities(self, vel_A, vel_B, g_comp, g_mag, chi, epsilon):
+    def __calculate_post_collision_velocities(self, vel_A, vel_B, g_comp, g_mag, cos_chi, epsilon):
         # Calculate mass factors
         m_A = self.__particles[0].m
         m_B = self.__particles[0].m if self.__num_species==1 else self.__particles[1].m
@@ -139,8 +140,9 @@ class NanbuCollisionModel(object):
         h_vec[:, 2] = -(g_comp[:, 2] * g_comp[:, 0] * cos_e + g_mag * g_comp[:, 1] * sin_e) / g_perp
 
         # Give chi a new axis to allow matrix multiplication
-        chi = chi[:, np.newaxis]
-        deflection_vec = (g_comp * (1 - np.cos(chi)) + h_vec * np.sin(chi)) 
+        cos_chi = cos_chi[:, np.newaxis]
+        sin_chi = np.sqrt(1 - cos_chi ** 2)
+        deflection_vec = (g_comp * (1 - cos_chi) + h_vec * sin_chi) 
         vel_A -= A_factor * deflection_vec
         vel_B += B_factor * deflection_vec
 
@@ -173,16 +175,20 @@ class NanbuCollisionModel(object):
         A = self.__calculate_A(s)
 
         # Calculate scattering angle chi
-        chi = self.__calculate_chi(A)
+        cos_chi = self.__calculate_cos_chi(A)
         epsilon = 2 * np.pi * np.random.uniform(0, 1, g_mag.shape)
 
         # Calculate post collisional velocities
-        self.__calculate_post_collision_velocities(velocities_A, velocities_B, g_components, g_mag, chi, epsilon)
+        self.__calculate_post_collision_velocities(velocities_A, velocities_B, g_components, g_mag, cos_chi, epsilon)
 
         # Unshuffle velocities
         velocities[:n, :] = velocities_A
         velocities[n:, :] = velocities_B
         new_vel = velocities[indices.argsort(), :]
+
+        # Set new temperature
+        vel_mag = np.sqrt(new_vel[:, 0] ** 2 + new_vel[:, 1] ** 2 + new_vel[:, 2] ** 2)
+        self.temperature = np.std(vel_mag) ** 2 * self.__particles[0].m / (3.0 * PhysicalConstants.boltzmann_constant)
 
         return new_vel
         
@@ -199,8 +205,12 @@ class NanbuCollisionModel(object):
         assert velocities.shape[0] == np.sum(self.__number_densities)
         assert velocities.shape[1] == 3
 
-        # Set seed before simulation
+        # # Set seed before simulation
         np.random.seed(1)
+
+        # Set temperature
+        vel_mag = np.sqrt(velocities[:, 0] ** 2 + velocities[:, 1] ** 2 + velocities[:, 2] ** 2)
+        self.temperature = np.std(vel_mag) ** 2 * self.__particles[0].m / (3.0 * PhysicalConstants.boltzmann_constant)
 
         num_steps = int(math.ceil(final_time / dt) + 1)
         vel_results = np.zeros((velocities.shape[0], velocities.shape[1], num_steps))
