@@ -47,7 +47,7 @@ def run_electron_thermal_relaxation_sim(sim_type):
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     n = int(1e4)
 
-    sim = sim_type(n, p_1, 1)
+    sim = sim_type(n, p_1, 1, coulomb_logarithm=10.0)
 
     T_y = 11500.0
     T_factor = 1.3

@@ -11,13 +11,14 @@ import numpy as np
 import math
 from scipy.interpolate import interp1d as interp1d
 import os
+import sys
 
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle
 from plasma_physics.pysrc.simulation.pic.algo.geometry import vector_ops
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 class NanbuCollisionModel(object):
-    def __init__(self, number_densities, particles, particle_weightings):
+    def __init__(self, number_densities, particles, particle_weightings, coulomb_logarithm=None):
         """
         Initialiser for Nanbu simulation class
 
@@ -66,6 +67,9 @@ class NanbuCollisionModel(object):
         A_interpolator = interp1d(s_data, A_data)
         self._A_interpolator = A_interpolator
 
+        # Set coulomb logarithm to a fixed value if it is specified
+        self.__coulomb_logarithm = coulomb_logarithm
+
     def __calculate_s(self, g_mag, dt):
         # Assume number density is equal for all species
         n = self.__number_densities[0]
@@ -83,12 +87,15 @@ class NanbuCollisionModel(object):
         b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_mag ** 2)
 
         # Calculate coulomb logarithm
-        T_background = self.temperature
-        debye_length = PhysicalConstants.epsilon_0 * T_background
-        debye_length /= n * PhysicalConstants.electron_charge ** 2
-        debye_length = np.sqrt(debye_length)
+        if self.__coulomb_logarithm is None:
+            T_background = self.temperature
+            debye_length = PhysicalConstants.epsilon_0 * T_background
+            debye_length /= n * PhysicalConstants.electron_charge ** 2
+            debye_length = np.sqrt(debye_length)
 
-        coulomb_logarithm = np.log(debye_length / b_90)
+            coulomb_logarithm = np.log(debye_length / b_90)
+        else:
+            coulomb_logarithm = self.__coulomb_logarithm
 
         # Calculate s
         s = n * g_mag * np.pi * b_90 ** 2 * coulomb_logarithm * dt
@@ -112,6 +119,11 @@ class NanbuCollisionModel(object):
                 else:
                     raise ValueError("Unexpected behaviour!")
             assert A_val != 0, "{}, {}".format(s_val, A_val)
+            
+            if np.isinf(np.sinh(A_val)):
+                print("WARNING: Overflow error in A_val calculation! Setting A to maximum double value")
+                A_val = sys.float_info.max
+
             A[i] = A_val
 
         return A
@@ -120,7 +132,11 @@ class NanbuCollisionModel(object):
         assert not np.any(A == 0)
         U = np.random.uniform(0, 1, A.shape)
         cos_chi = 1 / A * np.log(np.exp(-A) + 2 * U * np.sinh(A))
-        
+        cos_chi[cos_chi == np.inf] = 1.0
+        for cos_chi_val in cos_chi:
+            assert -1.0 <= cos_chi_val <= 1.0, cos_chi_val
+        # assert np.all(-1.0 <= cos_chi) and np.all(cos_chi <= 1.0), cos_chi
+
         return cos_chi
 
     def __calculate_post_collision_velocities(self, vel_A, vel_B, g_comp, g_mag, cos_chi, epsilon):
