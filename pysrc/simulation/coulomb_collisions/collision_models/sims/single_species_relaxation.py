@@ -35,13 +35,14 @@ def run_sim(sim_type):
     sim = sim_type(n, particle, weight)
 
     # Get initial uniform velocities
-    velocities = np.random.uniform(-1.0, 1.0, size=(n, 3))
+    v_max = 1e6
+    velocities = np.random.uniform(-v_max, v_max, size=(n, 3))
 
     # Get time step from collisional frequencies
-    c = CoulombCollision(weighted_particle, weighted_particle, 1.0, 2.0)
+    c = CoulombCollision(weighted_particle, weighted_particle, 1.0, 2.0 * v_max)
     process = RelaxationProcess(c)
-    v_K = process.kinetic_loss_stationary_frequency(n * weight, 1.0, 2.0)
-    v_P = process.momentum_loss_stationary_frequency(n * weight, 1.0, 2.0)
+    v_K = process.kinetic_loss_stationary_frequency(n * weight, 1.0, 2.0 * v_max)
+    v_P = process.momentum_loss_stationary_frequency(n * weight, 1.0, 2.0 * v_max)
     collision_time = 1.0 / max([v_K, v_P])
     dt = 0.1 * collision_time
     final_time = 2.5 * collision_time
@@ -106,6 +107,6 @@ def post_process_results(t, v_results):
     plt.show()
 
 if __name__ == '__main__':
-    sim_type = AbeCoulombCollisionModel
+    # sim_type = AbeCoulombCollisionModel
     sim_type = NanbuCollisionModel
     run_sim(sim_type)
