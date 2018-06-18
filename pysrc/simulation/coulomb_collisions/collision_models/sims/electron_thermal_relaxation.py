@@ -92,9 +92,25 @@ def run_electron_thermal_relaxation_sim(sim_type):
     ax.set_xlabel("Timestep")
     ax.set_ylabel("Temperature")
     ax.set_title("Electron thermal relaxation")
+    plt.savefig("electron_thermal_relaxation")
 
     plt.show()
 
+    # Plot velocity histograms
+    fig, ax = plt.subplots(2, 3, figsize=(10, 10))
+
+    ax[0, 0].hist(v_results[:, 0, 0], 100)
+    ax[0, 1].hist(v_results[:, 1, 0], 100)
+    ax[0, 2].hist(v_results[:, 2, 0], 100)
+
+    ax[1, 0].hist(v_results[:, 0, -1], 100)
+    ax[1, 1].hist(v_results[:, 1, -1], 100)
+    ax[1, 2].hist(v_results[:, 2, -1], 100)
+
+    plt.savefig("electron_thermal_relaxation_velocity_distributions")
+    plt.show()
+
+    # Plot energy conservation
     energy = np.sum(v_results[:, 0, :] ** 2 + v_results[:, 1, :] ** 2 + v_results[:, 2, :] ** 2, axis=0)
     x_mom = np.sum(v_results[:, 0, :], axis=0)
     y_mom = np.sum(v_results[:, 1, :], axis=0)

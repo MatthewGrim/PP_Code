@@ -67,12 +67,18 @@ class NanbuCollisionModel(object):
         A_interpolator = interp1d(s_data, A_data)
         self._A_interpolator = A_interpolator
 
+        # Set max s value to 6.0 as in Nanbu
+        self.__max_s = 6.0
+
         # Set coulomb logarithm to a fixed value if it is specified
         self.__coulomb_logarithm = coulomb_logarithm
 
     def __calculate_s(self, g_mag, dt):
-        # Assume number density is equal for all species
-        n = self.__number_densities[0]
+        if self.__num_species == 1:
+            n = self.__number_densities[0] / 2
+        else:
+            # Assume number density is equal for all species
+            n = self.__number_densities[0]
 
         # Calculate b_90 for collisions
         q_A = self.__particles[0].q
@@ -84,7 +90,8 @@ class NanbuCollisionModel(object):
             q_B = self.__particles[1].q
             m_B = self.__particles[1].m
         m_eff = m_A * m_B / (m_A + m_B)
-        b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_mag ** 2)
+        g_bar = np.std(g_mag) ** 2
+        b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_bar ** 2)
 
         # Calculate coulomb logarithm
         if self.__coulomb_logarithm is None:
@@ -98,44 +105,53 @@ class NanbuCollisionModel(object):
             coulomb_logarithm = self.__coulomb_logarithm
 
         # Calculate s
-        s = n * g_mag * np.pi * b_90 ** 2 * coulomb_logarithm * dt
+        s = n * g_bar * np.pi * b_90 ** 2 * 10.0 * dt
 
         return s
 
-    def __calculate_A(self, s):
+    def __calculate_A(self, s_val):
         # Interpolate from pre-calculated values
-        max_s = 25.0
-        A = np.zeros(s.shape)
-        for i, s_val in enumerate(s):
-            try:
-                A_val = self._A_interpolator(s_val)
-            except ValueError:
-                if s_val < self.__A_data[0, 0]:
-                    A_val = 1.0 / s_val
-                elif s_val > max_s:
-                    A_val = 3.0 * np.exp(-max_s)
-                elif self.__A_data[0, -1] < s_val:
-                    A_val = 3.0 * np.exp(-s_val)
-                else:
-                    raise ValueError("Unexpected behaviour!")
-            assert A_val != 0, "{}, {}".format(s_val, A_val)
-            
-            if np.isinf(np.sinh(A_val)):
-                print("WARNING: Overflow error in A_val calculation! Setting A to maximum double value")
-                A_val = sys.float_info.max
+        # A = np.zeros(s.shape)
+        # for i, s_val in enumerate(s):
+        try:
+            A_val = self._A_interpolator(s_val)
+        except ValueError:
+            if s_val < self.__A_data[0, 0]:
+                A_val = 1.0 / s_val
+            elif s_val > self.__max_s:
+                A_val = 3.0 * np.exp(-self.__max_s)
+            elif self.__A_data[0, -1] < s_val:
+                A_val = 3.0 * np.exp(-s_val)
+            else:
+                raise ValueError("Unexpected behaviour!")
+        assert A_val != 0, "{}, {}".format(s_val, A_val)
 
-            A[i] = A_val
+            # A[i] = A_val
 
-        return A
+        return A_val
 
-    def __calculate_cos_chi(self, A):
-        assert not np.any(A == 0)
-        U = np.random.uniform(0, 1, A.shape)
-        cos_chi = 1 / A * np.log(np.exp(-A) + 2 * U * np.sinh(A))
-        cos_chi[cos_chi == np.inf] = 1.0
+    def __calculate_cos_chi(self, A_val, s_val, g_comp):
+        # assert not np.any(A == 0)
+
+        cos_chi = np.zeros(g_comp.shape)
+        U = np.random.uniform(0, 1, g_comp.shape)
+        for i, U_val in enumerate(U):
+            # U_val = U[i]
+            # A_val = A[i]
+            if s_val > self.__max_s:
+                # Assume isotropic
+                cos_chi_val = 2 * U_val - 1
+            else:
+                cos_chi_val = 1 / A_val * np.log(np.exp(-A_val) + 2 * U_val * np.sinh(A_val))
+
+            # Correct overflow in simulations
+            if np.isinf(cos_chi_val):
+                cos_chi_val = 1 + s_val * np.log(U_val)
+
+            cos_chi[i] = cos_chi_val
+    
         for cos_chi_val in cos_chi:
             assert -1.0 <= cos_chi_val <= 1.0, cos_chi_val
-        # assert np.all(-1.0 <= cos_chi) and np.all(cos_chi <= 1.0), cos_chi
 
         return cos_chi
 
@@ -157,8 +173,8 @@ class NanbuCollisionModel(object):
 
         # Give chi a new axis to allow matrix multiplication
         cos_chi = cos_chi[:, np.newaxis]
-        sin_chi = np.sqrt(1 - cos_chi ** 2)
-        deflection_vec = (g_comp * (1 - cos_chi) + h_vec * sin_chi) 
+        sin_chi = np.sqrt(1.0 - cos_chi ** 2)
+        deflection_vec = (g_comp * (1.0 - cos_chi) + h_vec * sin_chi) 
         vel_A -= A_factor * deflection_vec
         vel_B += B_factor * deflection_vec
 
@@ -191,7 +207,7 @@ class NanbuCollisionModel(object):
         A = self.__calculate_A(s)
 
         # Calculate scattering angle chi
-        cos_chi = self.__calculate_cos_chi(A)
+        cos_chi = self.__calculate_cos_chi(A, s, g_components)
         epsilon = 2 * np.pi * np.random.uniform(0, 1, g_mag.shape)
 
         # Calculate post collisional velocities
