@@ -109,7 +109,9 @@ class NanbuCollisionModel(object):
             coulomb_logarithm = self.__coulomb_logarithm
 
         # Calculate s
-        s = coulomb_logarithm / (4 * np.pi) * (q_A * q_B / (PhysicalConstants.epsilon_0 * m_eff) ** 2) * n / g_mag ** 3 * dt
+        # b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_mag ** 2)
+        # s = n * g_mag * np.pi * b_90 ** 2 * coulomb_logarithm * dt
+        s = coulomb_logarithm / (4 * np.pi) * (q_A * q_B / (PhysicalConstants.epsilon_0 * m_eff)) ** 2 * n / g_mag ** 3 * dt
 
         return s
 
@@ -122,27 +124,22 @@ class NanbuCollisionModel(object):
             except ValueError:
                 if s_val < self.__A_data[0, 0]:
                     A_val = 1.0 / s_val
-                elif s_val > self.__max_s:
-                    A_val = 3.0 * np.exp(-self.__max_s)
                 elif self.__A_data[0, -1] < s_val:
                     A_val = 3.0 * np.exp(-s_val)
                 else:
                     raise ValueError("Unexpected behaviour!")
-            assert A_val != 0, "{}, {}".format(s_val, A_val)
 
             A[i] = A_val
 
         return A
 
     def __calculate_cos_chi(self, A, s, debug=False):
-        assert not np.any(A == 0)
-
         cos_chi = np.zeros(s.shape)
         U = np.random.uniform(0, 1, s.shape)
         for i, s_val in enumerate(s):
             U_val = U[i]
             A_val = A[i]
-            if s_val > self.__max_s:
+            if s_val > self.__max_s or A_val == 0.0:
                 # Assume isotropic
                 cos_chi_val = 2 * U_val - 1
             else:
@@ -178,7 +175,7 @@ class NanbuCollisionModel(object):
         h_vec = np.zeros(g_comp.shape)
         h_vec[:, 0] = g_perp * cos_e
         h_vec[:, 1] = -(g_comp[:, 1] * g_comp[:, 0] * cos_e + g_mag * g_comp[:, 2] * sin_e) / g_perp
-        h_vec[:, 2] = -(g_comp[:, 2] * g_comp[:, 0] * cos_e + g_mag * g_comp[:, 1] * sin_e) / g_perp
+        h_vec[:, 2] = -(g_comp[:, 2] * g_comp[:, 0] * cos_e - g_mag * g_comp[:, 1] * sin_e) / g_perp
 
         # Give chi a new axis to allow matrix multiplication
         cos_chi = cos_chi[:, np.newaxis]
