@@ -178,7 +178,7 @@ class AbeCoulombCollisionModel(object):
         return new_vel
 
 
-    def run_sim(self, vel, dt, final_time):
+    def run_sim(self, vel, dt, final_time, seed=1):
         """
         Run simulation
 
@@ -194,7 +194,7 @@ class AbeCoulombCollisionModel(object):
         assert vel.shape[1] == 3
 
         # Set seed
-        np.random.seed(1)
+        np.random.seed(seed)
 
         num_steps = int(math.ceil(final_time / dt) + 1)
         vel_results = np.zeros((vel.shape[0], vel.shape[1], num_steps))

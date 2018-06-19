@@ -83,7 +83,7 @@ class NanbuCollisionModel(object):
             # Assume number density is equal for all species
             n = self.__number_densities[0]
 
-        # Calculate b_90 for collisions
+        # Get charges, and calculate m_eff for collisions
         q_A = self.__particles[0].q
         m_A = self.__particles[0].m
         if self.__num_species == 1:
@@ -93,7 +93,6 @@ class NanbuCollisionModel(object):
             q_B = self.__particles[1].q
             m_B = self.__particles[1].m
         m_eff = m_A * m_B / (m_A + m_B)
-        b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_mag ** 2)
 
         # Calculate coulomb logarithm
         if self.__coulomb_logarithm is None:
@@ -101,14 +100,15 @@ class NanbuCollisionModel(object):
             debye_length = PhysicalConstants.epsilon_0 * T_background
             debye_length /= n * PhysicalConstants.electron_charge ** 2
             debye_length = np.sqrt(debye_length)
-            b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_mag ** 2)
+            g_bar = np.mean(g_mag ** 2)
+            b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_bar)
 
             coulomb_logarithm = np.log(debye_length / b_90)
         else:
             coulomb_logarithm = self.__coulomb_logarithm
 
         # Calculate s
-        s = n * g_mag * np.pi * b_90 ** 2 * 10.0 * dt
+        s = coulomb_logarithm / (4 * np.pi) * (q_A * q_B / (PhysicalConstants.epsilon_0 * m_eff) ** 2) * n / g_mag ** 3 * dt
 
         return s
 
@@ -229,7 +229,7 @@ class NanbuCollisionModel(object):
         return new_vel
         
 
-    def run_sim(self, velocities, dt, final_time):
+    def run_sim(self, velocities, dt, final_time, seed=1):
         """
         Run simulation
 
@@ -242,7 +242,7 @@ class NanbuCollisionModel(object):
         assert velocities.shape[1] == 3
 
         # # Set seed before simulation
-        np.random.seed(1)
+        np.random.seed(seed)
 
         # Set temperature
         vel_mag = np.sqrt(velocities[:, 0] ** 2 + velocities[:, 1] ** 2 + velocities[:, 2] ** 2)

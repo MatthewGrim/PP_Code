@@ -9,6 +9,7 @@ This simulation models a single particle species relaxing from a uniform 3D velo
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import scipy.stats as ss
 
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
 from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess
@@ -24,7 +25,9 @@ def run_sim(sim_type):
     sim_type: Instances of simulation class for coulomb collisions
     """
     # Set seed
-    np.random.seed(1)
+    # for seed in range(5):
+    seed = 1
+    np.random.seed(seed)
 
     # Set up simulation
     particle = ChargedParticle(2.01410178 * 1.66054e-27, PhysicalConstants.electron_charge)
@@ -35,7 +38,7 @@ def run_sim(sim_type):
     sim = sim_type(n, particle, weight)
 
     # Get initial uniform velocities
-    v_max = 1e6
+    v_max = 1.0
     velocities = np.random.uniform(-v_max, v_max, size=(n, 3))
 
     # Get time step from collisional frequencies
@@ -88,6 +91,10 @@ def post_process_results(t, v_results):
 
     plt.show()
 
+    print(ss.norm.fit_loc_scale(v_results[:, 0, -1]))
+    print(ss.norm.fit_loc_scale(v_results[:, 1, -1]))
+    print(ss.norm.fit_loc_scale(v_results[:, 2, -1]))
+
     energy = np.sum(v_results[:, 0, :] ** 2 + v_results[:, 1, :] ** 2 + v_results[:, 2, :] ** 2, axis=0)
     x_mom = np.sum(v_results[:, 0, :], axis=0)
     y_mom = np.sum(v_results[:, 1, :], axis=0)
@@ -107,6 +114,6 @@ def post_process_results(t, v_results):
     plt.show()
 
 if __name__ == '__main__':
-    # sim_type = AbeCoulombCollisionModel
+    sim_type = AbeCoulombCollisionModel
     sim_type = NanbuCollisionModel
     run_sim(sim_type)
