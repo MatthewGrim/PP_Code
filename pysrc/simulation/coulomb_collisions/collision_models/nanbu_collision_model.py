@@ -90,8 +90,7 @@ class NanbuCollisionModel(object):
             q_B = self.__particles[1].q
             m_B = self.__particles[1].m
         m_eff = m_A * m_B / (m_A + m_B)
-        g_bar = np.std(g_mag) ** 2
-        b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_bar ** 2)
+        b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_mag ** 2)
 
         # Calculate coulomb logarithm
         if self.__coulomb_logarithm is None:
@@ -105,39 +104,39 @@ class NanbuCollisionModel(object):
             coulomb_logarithm = self.__coulomb_logarithm
 
         # Calculate s
-        s = n * g_bar * np.pi * b_90 ** 2 * 10.0 * dt
+        s = n * g_mag * np.pi * b_90 ** 2 * 10.0 * dt
 
         return s
 
-    def __calculate_A(self, s_val):
+    def __calculate_A(self, s):
         # Interpolate from pre-calculated values
-        # A = np.zeros(s.shape)
-        # for i, s_val in enumerate(s):
-        try:
-            A_val = self._A_interpolator(s_val)
-        except ValueError:
-            if s_val < self.__A_data[0, 0]:
-                A_val = 1.0 / s_val
-            elif s_val > self.__max_s:
-                A_val = 3.0 * np.exp(-self.__max_s)
-            elif self.__A_data[0, -1] < s_val:
-                A_val = 3.0 * np.exp(-s_val)
-            else:
-                raise ValueError("Unexpected behaviour!")
-        assert A_val != 0, "{}, {}".format(s_val, A_val)
+        A = np.zeros(s.shape)
+        for i, s_val in enumerate(s):
+            try:
+                A_val = self._A_interpolator(s_val)
+            except ValueError:
+                if s_val < self.__A_data[0, 0]:
+                    A_val = 1.0 / s_val
+                elif s_val > self.__max_s:
+                    A_val = 3.0 * np.exp(-self.__max_s)
+                elif self.__A_data[0, -1] < s_val:
+                    A_val = 3.0 * np.exp(-s_val)
+                else:
+                    raise ValueError("Unexpected behaviour!")
+            assert A_val != 0, "{}, {}".format(s_val, A_val)
 
-            # A[i] = A_val
+            A[i] = A_val
 
-        return A_val
+        return A
 
-    def __calculate_cos_chi(self, A_val, s_val, g_comp):
-        # assert not np.any(A == 0)
+    def __calculate_cos_chi(self, A, s):
+        assert not np.any(A == 0)
 
-        cos_chi = np.zeros(g_comp.shape)
-        U = np.random.uniform(0, 1, g_comp.shape)
-        for i, U_val in enumerate(U):
-            # U_val = U[i]
-            # A_val = A[i]
+        cos_chi = np.zeros(s.shape)
+        U = np.random.uniform(0, 1, s.shape)
+        for i, s_val in enumerate(s):
+            U_val = U[i]
+            A_val = A[i]
             if s_val > self.__max_s:
                 # Assume isotropic
                 cos_chi_val = 2 * U_val - 1
@@ -207,7 +206,7 @@ class NanbuCollisionModel(object):
         A = self.__calculate_A(s)
 
         # Calculate scattering angle chi
-        cos_chi = self.__calculate_cos_chi(A, s, g_components)
+        cos_chi = self.__calculate_cos_chi(A, s)
         epsilon = 2 * np.pi * np.random.uniform(0, 1, g_mag.shape)
 
         # Calculate post collisional velocities
