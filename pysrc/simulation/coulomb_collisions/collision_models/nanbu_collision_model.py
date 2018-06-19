@@ -12,6 +12,7 @@ import math
 from scipy.interpolate import interp1d as interp1d
 import os
 import sys
+import matplotlib.pyplot as plt
 
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle
 from plasma_physics.pysrc.simulation.pic.algo.geometry import vector_ops
@@ -133,7 +134,7 @@ class NanbuCollisionModel(object):
 
         return A
 
-    def __calculate_cos_chi(self, A, s):
+    def __calculate_cos_chi(self, A, s, debug=False):
         assert not np.any(A == 0)
 
         cos_chi = np.zeros(s.shape)
@@ -155,6 +156,11 @@ class NanbuCollisionModel(object):
     
         for cos_chi_val in cos_chi:
             assert -1.0 <= cos_chi_val <= 1.0, cos_chi_val
+
+        if debug:
+            plt.figure()
+            plt.hist(np.arccos(cos_chi), 100, normed=True)
+            plt.show()
 
         return cos_chi
 
