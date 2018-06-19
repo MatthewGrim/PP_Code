@@ -18,7 +18,7 @@ from plasma_physics.pysrc.simulation.pic.algo.geometry import vector_ops
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 class NanbuCollisionModel(object):
-    def __init__(self, number_densities, particles, particle_weightings, coulomb_logarithm=None):
+    def __init__(self, number_densities, particles, particle_weightings, coulomb_logarithm=None, freeze_species_2=False):
         """
         Initialiser for Nanbu simulation class
 
@@ -37,9 +37,9 @@ class NanbuCollisionModel(object):
 
             # Set particle variables
             self.__num_species = number_densities.shape[0]
-            self.__particles = [particles]
-            self.__particle_weights = [particle_weightings]
-            self.__number_densities = [number_densities]
+            self.__particles = particles
+            self.__particle_weights = particle_weightings
+            self.__number_densities = number_densities
         elif isinstance(number_densities, int):
             assert isinstance(particles, ChargedParticle)
             assert isinstance(particle_weightings, int)
@@ -73,6 +73,9 @@ class NanbuCollisionModel(object):
         # Set coulomb logarithm to a fixed value if it is specified
         self.__coulomb_logarithm = coulomb_logarithm
 
+        # Set boolean for freezing species 2
+        self.__freeze_species_2 = freeze_species_2
+
     def __calculate_s(self, g_mag, dt):
         if self.__num_species == 1:
             n = self.__number_densities[0] / 2
@@ -98,6 +101,7 @@ class NanbuCollisionModel(object):
             debye_length = PhysicalConstants.epsilon_0 * T_background
             debye_length /= n * PhysicalConstants.electron_charge ** 2
             debye_length = np.sqrt(debye_length)
+            b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_mag ** 2)
 
             coulomb_logarithm = np.log(debye_length / b_90)
         else:
@@ -175,7 +179,8 @@ class NanbuCollisionModel(object):
         sin_chi = np.sqrt(1.0 - cos_chi ** 2)
         deflection_vec = (g_comp * (1.0 - cos_chi) + h_vec * sin_chi) 
         vel_A -= A_factor * deflection_vec
-        vel_B += B_factor * deflection_vec
+        if not self.__freeze_species_2:
+            vel_B += B_factor * deflection_vec
 
     def single_time_step(self, velocities, dt):
         # Assume number density is equal for all species
@@ -207,7 +212,7 @@ class NanbuCollisionModel(object):
 
         # Calculate scattering angle chi
         cos_chi = self.__calculate_cos_chi(A, s)
-        epsilon = 2 * np.pi * np.random.uniform(0, 1, g_mag.shape)
+        epsilon = np.random.uniform(0, 2 * np.pi, g_mag.shape)
 
         # Calculate post collisional velocities
         self.__calculate_post_collision_velocities(velocities_A, velocities_B, g_components, g_mag, cos_chi, epsilon)

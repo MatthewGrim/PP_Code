@@ -13,6 +13,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.abe_collison_model import AbeCoulombCollisionModel
+from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
@@ -37,7 +38,7 @@ def get_relaxation_time(p_1, n_background, velocity):
     return tau
 
 
-def run_electron_beam_into_stationary_target_sim():
+def run_electron_beam_into_stationary_target_sim(sim_type):
     """
     Run simulation of velocity relaxation of electron beam to stationary
     background species
@@ -47,7 +48,12 @@ def run_electron_beam_into_stationary_target_sim():
     n = int(1e3)
     beam_velocity = 1.0
 
-    sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2, freeze_species_2=True)
+    if sim_type == "Abe":
+        sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2, freeze_species_2=True)
+    elif sim_type == "Nanbu":
+        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), coulomb_logarithm=10.0, freeze_species_2=True)
+    else:
+        raise ValueError("Invalid sim type")
 
     velocities = np.zeros((2 * n, 3))
     velocities[:n, :] = np.asarray([0.0, 0.0, beam_velocity])
@@ -87,7 +93,7 @@ def run_electron_beam_into_stationary_target_sim():
     plt.show()
 
 
-def run_electon_beam_into_electron_gas_sim():
+def run_electon_beam_into_electron_gas_sim(sim_type):
     """
     Run a simulation of an electron beam into a background gas at a
     given temperature
@@ -96,7 +102,12 @@ def run_electon_beam_into_electron_gas_sim():
     p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     n = int(1e3)
 
-    sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2, freeze_species_2=True)
+    if sim_type == "Abe":
+        sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2, freeze_species_2=True)
+    elif sim_type == "Nanbu":
+        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), coulomb_logarithm=10.0, freeze_species_2=True)
+    else:
+        raise ValueError("Invalid sim type")
 
     # Set initial velocity conditions of beam
     beam_velocity = np.sqrt(2 * 100 * PhysicalConstants.electron_charge / p_1.m)
@@ -173,5 +184,8 @@ def run_electon_beam_into_electron_gas_sim():
 
 
 if __name__ == '__main__':
-    # run_electron_beam_into_stationary_target_sim()
-    run_electon_beam_into_electron_gas_sim()
+    sim_type = "Abe"
+    sim_type = "Nanbu"
+
+    run_electron_beam_into_stationary_target_sim(sim_type)
+    run_electon_beam_into_electron_gas_sim(sim_type)
