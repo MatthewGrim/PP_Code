@@ -45,11 +45,13 @@ def run_electron_beam_into_stationary_target_sim(sim_type):
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(1e31, -PhysicalConstants.electron_charge)
+    w_1 = 1
+    w_2 = 100
     n = int(5e3)
     beam_velocity = 1.0
 
     if sim_type == "Abe":
-        sim = AbeCoulombCollisionModel(n, p_1, w_1=1, N_2=n, particle_2=p_2, w_2=1, freeze_species_2=True)
+        sim = AbeCoulombCollisionModel(n, p_1, w_1=w_1, N_2=n, particle_2=p_2, w_2=w_2, freeze_species_2=True)
     elif sim_type == "Nanbu":
         sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), coulomb_logarithm=10.0, freeze_species_2=True)
     else:
@@ -59,7 +61,7 @@ def run_electron_beam_into_stationary_target_sim(sim_type):
     velocities[:n, :] = np.asarray([0.0, 0.0, beam_velocity])
     velocities[n:] = np.asarray([0.0, 0.0, 0.0])
 
-    tau = get_relaxation_time(p_1, n, beam_velocity)
+    tau = get_relaxation_time(p_1, n * w_2, beam_velocity)
     dt = 0.05 * tau
     final_time = 3.0 * tau
 
@@ -102,10 +104,12 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
+    w_1 = 1
+    w_2 = 100
     n = int(5e3)
 
     if sim_type == "Abe":
-        sim = AbeCoulombCollisionModel(n, p_1, w_1=1, N_2=n, particle_2=p_2, w_2=1, freeze_species_2=True)
+        sim = AbeCoulombCollisionModel(n, p_1, w_1=w_1, N_2=n, particle_2=p_2, w_2=w_2, freeze_species_2=True)
     elif sim_type == "Nanbu":
         sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), coulomb_logarithm=10.0, freeze_species_2=True)
     else:
@@ -123,7 +127,7 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
     maxwell_velocities = np.random.normal(loc=0.0, scale=sigma, size=velocities[n:, :].shape) / np.sqrt(3)
     velocities[n:] = maxwell_velocities
 
-    tau = get_relaxation_time(p_1, n, beam_velocity)
+    tau = get_relaxation_time(p_1, n * w_2, beam_velocity)
     dt = 0.01 * tau
     final_time = 1.0 * tau
 

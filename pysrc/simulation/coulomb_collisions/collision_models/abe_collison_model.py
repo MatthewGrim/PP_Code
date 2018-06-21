@@ -115,7 +115,7 @@ class AbeCoulombCollisionModel(object):
         c_phi = np.cos(PHI)
         s_phi = np.sin(PHI)
 
-        delta_squared = self.__q_1 ** 2 * self.__q_2 ** 2 * self.__n_1
+        delta_squared = self.__q_1 ** 2 * self.__q_2 ** 2 * max(self.__n_1, self.__n_2)
         delta_squared *= dt * self.__coulomb_logarithm
         delta_squared /= 8.0 * np.pi * u ** 3 * self.__m_eff ** 2 * PhysicalConstants.epsilon_0 ** 2
 
