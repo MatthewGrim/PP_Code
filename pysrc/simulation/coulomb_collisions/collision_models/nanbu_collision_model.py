@@ -42,7 +42,7 @@ class NanbuCollisionModel(object):
             self.__particle_weights = particle_weightings
             self.__number_densities = number_densities
             
-            assert np.all(self.__particle_weights == self.__particle_weights[0]), "Variable weights currently not handled"
+            assert np.all(self.__particle_weights == 1), "Weighted particles not handled"
             assert np.all(self.__number_densities == self.__number_densities[0]), "Variable simulated particles currently not handled"
 
             # Get start index in velocities array for each species
