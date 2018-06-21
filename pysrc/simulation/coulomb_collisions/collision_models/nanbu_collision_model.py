@@ -42,6 +42,9 @@ class NanbuCollisionModel(object):
             self.__particle_weights = particle_weightings
             self.__number_densities = number_densities
             
+            assert np.all(self.__particle_weights == self.__particle_weights[0]), "Variable weights currently not handled"
+            assert np.all(self.__number_densities == self.__number_densities[0]), "Variable simulated particles currently not handled"
+
             # Get start index in velocities array for each species
             species_start_idx = np.zeros(number_densities.shape)
             idx = 0
@@ -61,10 +64,6 @@ class NanbuCollisionModel(object):
             self.__number_densities = [number_densities]
         else:
             raise RuntimeError("number_densities must be either a float or numpy array")
-
-        # Prevent multi-component simulations
-        if self.__num_species > 2:
-            raise RuntimeError("Multicomponent species are currently not handled")
 
         # Define temperatures of plasma - this will be set at the beginning of the simulation
         self.temperature = None
