@@ -17,46 +17,60 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
 class AbeCoulombCollisionModel(object):
-    def __init__(self, n_1, particle_1, particle_weighting=1,
-                 n_2=None, particle_2=None, freeze_species_2=False,
+    def __init__(self, N_1, particle_1, w_1=1,
+                 N_2=None, particle_2=None, w_2=None, freeze_species_2=False,
                  coulomb_logarithm=10.0):
         """
         Used to simulate collisions between two particle species
 
-        n_1: total number of unweighted particles of species 1
-        n_2: total number of unweighted particles of species 2
+        N_1: total number of unweighted particles of species 1
+        N_2: total number of unweighted particles of species 2
         particle_1: first particle species involved in collisions
         particle_2: second particle species involved in collisions
-        particle_weighting: number of particles per macro-particle
-                            in simulation
+        w_1: number of particles per simulated particle of species 1
+        w_2: number of particles per simulated particle of species 2
         freeze_species_2: boolean to determine if second species is
                           frozen so that its velocities are not updated
         """
-        assert isinstance(n_1, int)
-        assert isinstance(particle_weighting, int)
+        assert isinstance(N_1, int)
+        assert isinstance(w_1, int)
         assert isinstance(particle_1, ChargedParticle)
-        assert n_2 is None or isinstance(n_2, int)
+        assert N_2 is None or isinstance(N_2, int)
         assert particle_2 is None or isinstance(particle_2, ChargedParticle)
+        assert w_2 is None or isinstance(w_2, int)
 
         # Define first particle species
-        self.__m_1 = particle_1.m * particle_weighting
-        self.__q_1 = particle_1.q * particle_weighting
-        self.__n_1 = n_1
+        self.__m_1 = particle_1.m
+        self.__q_1 = particle_1.q
+        self.__N_1 = N_1
+        self.__w_1 = w_1
+        self.__n_1 = N_1 * w_1
 
         # Define second particle species, if it exists
         if particle_2 is not None:
             self.__single_species = False
-            self.__m_2 = particle_2.m * particle_weighting
-            self.__q_2 = particle_2.q * particle_weighting
-            self.__n_2 = n_2
+            self.__m_2 = particle_2.m
+            self.__q_2 = particle_2.q
+            self.__N_2 = N_2
+            self.__w_2 = w_2
+            self.__n_2 = w_2 * N_2
             self.__m_eff = self.__m_1 * self.__m_2 / (self.__m_1 + self.__m_2)
             self.__freeze_species_2 = freeze_species_2
+
+            # Set collision thresholds
+            self.__max_w = float(max(w_1, w_2))
+            self.__collision_threshold_1 = w_2 / self.__max_w
+            self.__collision_threshold_2 = w_1 / self.__max_w
         else:
             self.__single_species = True
             self.__m_2 = self.__m_1
             self.__q_2 = self.__q_1
             self.__n_2 = self.__n_1
             self.__m_eff = self.__m_1 ** 2 / (2 * self.__m_1)
+
+            # Set collision thresholds
+            self.__collision_threshold_1 = 1.0
+            self.__collision_threshold_2 = 1.0
 
         # Coulomb logarithm is currently fixed in method
         self.__coulomb_logarithm = coulomb_logarithm
@@ -78,12 +92,12 @@ class AbeCoulombCollisionModel(object):
 
             np.random.shuffle(indices)
         else:
-            np.random.shuffle(vel[:self.__n_1, :])
-            np.random.shuffle(vel[self.__n_1:, :])
+            np.random.shuffle(vel[:self.__N_1, :])
+            np.random.shuffle(vel[self.__N_1:, :])
             np.random.set_state(current_state)
 
-            np.random.shuffle(indices[:self.__n_1])
-            np.random.shuffle(indices[self.__n_1:])
+            np.random.shuffle(indices[:self.__N_1])
+            np.random.shuffle(indices[self.__N_1:])
 
         return indices
 
@@ -125,8 +139,10 @@ class AbeCoulombCollisionModel(object):
             du[2] = -u * one_minus_c_theta
 
         # Step 4 - Update velocities
-        new_v_1 = v_1 + self.__m_eff / self.__m_1 * du
-        new_v_2 = v_2 - self.__m_eff / self.__m_2 * du
+        P_1 = 1.0 if np.random.uniform(0, 1) <= self.__collision_threshold_1 else 0.0
+        P_2 = 1.0 if np.random.uniform(0, 1) <= self.__collision_threshold_2 else 0.0
+        new_v_1 = v_1 + P_1 * self.__m_eff / self.__m_1 * du
+        new_v_2 = v_2 - P_2 * self.__m_eff / self.__m_2 * du
 
         return new_v_1, new_v_2
 
@@ -141,7 +157,7 @@ class AbeCoulombCollisionModel(object):
         # Function is not implemented for multiple species, or odd particle
         # number
         if self.__single_species:
-            assert(self.__n_1 % 2 == 0), "Uneven number of particles is not implemented"
+            assert(self.__N_1 % 2 == 0), "Uneven number of particles is not implemented"
 
             # Step 1 - Randomly change addresses of velocities, for each species
             indices = self.__randomise_velocities(vel)
@@ -156,16 +172,16 @@ class AbeCoulombCollisionModel(object):
                 new_vel[idx, :] = new_v_1
                 new_vel[idx + 1, :] = new_v_2
         else:
-            assert(self.__n_1 == self.__n_2), "Different number of particles is not implemented"
+            assert(self.__N_1 == self.__N_2), "Different number of particles is not implemented"
 
             # Step 1 - Randomly change addresses of velocities, for each species
             indices = self.__randomise_velocities(vel)
 
             # Step 2 - Calculate post-collisional velocities
             new_vel = np.zeros(vel.shape)
-            for i in range(self.__n_1):
+            for i in range(self.__N_1):
                 idx_1 = i
-                idx_2 = self.__n_1 + i
+                idx_2 = self.__N_1 + i
                 v_1 = vel[idx_1, :]
                 v_2 = vel[idx_2, :]
                 new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt)
@@ -188,9 +204,9 @@ class AbeCoulombCollisionModel(object):
         final_time: time of simulation
         """
         if self.__single_species:
-            assert vel.shape[0] == self.__n_1
+            assert vel.shape[0] == self.__N_1
         else:
-            assert vel.shape[0] == self.__n_1 + self.__n_2
+            assert vel.shape[0] == self.__N_1 + self.__N_2
         assert vel.shape[1] == 3
 
         # Set seed

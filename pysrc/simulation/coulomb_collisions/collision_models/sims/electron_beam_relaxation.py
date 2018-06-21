@@ -45,11 +45,11 @@ def run_electron_beam_into_stationary_target_sim(sim_type):
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(1e31, -PhysicalConstants.electron_charge)
-    n = int(1e3)
+    n = int(5e3)
     beam_velocity = 1.0
 
     if sim_type == "Abe":
-        sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2, freeze_species_2=True)
+        sim = AbeCoulombCollisionModel(n, p_1, w_1=1, N_2=n, particle_2=p_2, w_2=1, freeze_species_2=True)
     elif sim_type == "Nanbu":
         sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), coulomb_logarithm=10.0, freeze_species_2=True)
     else:
@@ -92,6 +92,8 @@ def run_electron_beam_into_stationary_target_sim(sim_type):
 
     plt.show()
 
+    return t, v_results
+
 
 def run_electon_beam_into_electron_gas_sim(sim_type):
     """
@@ -100,10 +102,10 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
     """
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
-    n = int(1e3)
+    n = int(5e3)
 
     if sim_type == "Abe":
-        sim = AbeCoulombCollisionModel(n, p_1, particle_weighting=1, n_2=n, particle_2=p_2, freeze_species_2=True)
+        sim = AbeCoulombCollisionModel(n, p_1, w_1=1, N_2=n, particle_2=p_2, w_2=1, freeze_species_2=True)
     elif sim_type == "Nanbu":
         sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), coulomb_logarithm=10.0, freeze_species_2=True)
     else:
@@ -182,10 +184,12 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
     fig.suptitle("Conservation Plots")
     plt.show()
 
+    return t, v_results
+
 
 if __name__ == '__main__':
     sim_type = "Abe"
-    sim_type = "Nanbu"
+    # sim_type = "Nanbu"
 
-    run_electron_beam_into_stationary_target_sim(sim_type)
-    run_electon_beam_into_electron_gas_sim(sim_type)
+    _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
+    _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
