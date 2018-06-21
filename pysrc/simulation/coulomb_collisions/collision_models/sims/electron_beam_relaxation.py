@@ -46,8 +46,8 @@ def run_electron_beam_into_stationary_target_sim(sim_type):
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(1e31, -PhysicalConstants.electron_charge)
     w_1 = 1
-    w_2 = 100
-    n = int(5e3)
+    w_2 = 1
+    n = int(1e3)
     beam_velocity = 1.0
 
     if sim_type == "Abe":
@@ -105,8 +105,8 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     w_1 = 1
-    w_2 = 100
-    n = int(5e3)
+    w_2 = 1
+    n = int(1e3)
 
     if sim_type == "Abe":
         sim = AbeCoulombCollisionModel(n, p_1, w_1=w_1, N_2=n, particle_2=p_2, w_2=w_2, freeze_species_2=True)
@@ -192,8 +192,8 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
 
 
 if __name__ == '__main__':
-    sim_type = "Abe"
-    # sim_type = "Nanbu"
+    # sim_type = "Abe"
+    sim_type = "Nanbu"
 
     _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
     _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
