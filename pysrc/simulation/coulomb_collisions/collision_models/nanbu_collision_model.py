@@ -17,9 +17,10 @@ import matplotlib.pyplot as plt
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle
 from plasma_physics.pysrc.simulation.pic.algo.geometry import vector_ops
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
+from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 
 class NanbuCollisionModel(object):
-    def __init__(self, number_densities, particles, particle_weightings, coulomb_logarithm=None, freeze_species_2=False):
+    def __init__(self, number_densities, particles, particle_weightings, coulomb_logarithm=None, frozen_species=None):
         """
         Initialiser for Nanbu simulation class
 
@@ -41,6 +42,7 @@ class NanbuCollisionModel(object):
             self.__particles = particles
             self.__particle_weights = particle_weightings
             self.__number_densities = number_densities
+            self.__frozen_species = frozen_species if frozen_species is not None else np.zeros(number_densities.shape).astype(bool)
             
             assert np.all(self.__particle_weights == 1), "Weighted particles not handled"
             assert np.all(self.__number_densities == self.__number_densities[0]), "Variable simulated particles currently not handled"
@@ -56,12 +58,14 @@ class NanbuCollisionModel(object):
         elif isinstance(number_densities, int):
             assert isinstance(particles, ChargedParticle)
             assert isinstance(particle_weightings, int)
+            assert isinstance(freeze_species, bool)
             
             # Set particle variables
             self.__num_species = 1
             self.__particles = [particles]
             self.__particle_weights = [particle_weightings]
             self.__number_densities = [number_densities]
+            self.__frozen_species = [frozen_species] if frozen_species is not None else [False]
         else:
             raise RuntimeError("number_densities must be either a float or numpy array")
 
@@ -81,9 +85,6 @@ class NanbuCollisionModel(object):
 
         # Set coulomb logarithm to a fixed value if it is specified
         self.__coulomb_logarithm = coulomb_logarithm
-
-        # Set boolean for freezing species 2
-        self.__freeze_species_2 = freeze_species_2
 
     def __calculate_s(self, idx_A, idx_B, g_mag, dt):
         """
@@ -205,8 +206,9 @@ class NanbuCollisionModel(object):
         cos_chi = cos_chi[:, np.newaxis]
         sin_chi = np.sqrt(1.0 - cos_chi ** 2)
         deflection_vec = (g_comp * (1.0 - cos_chi) + h_vec * sin_chi) 
-        vel_A -= A_factor * deflection_vec
-        if not self.__freeze_species_2:
+        if not self.__frozen_species[idx_A]:
+            vel_A -= A_factor * deflection_vec
+        if not self.__frozen_species[idx_B]:
             vel_B += B_factor * deflection_vec
 
     def single_time_step(self, velocities, dt):

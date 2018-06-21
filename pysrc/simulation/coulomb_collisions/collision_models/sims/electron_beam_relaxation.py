@@ -54,7 +54,7 @@ def run_electron_beam_into_stationary_target_sim(sim_type):
     if sim_type == "Abe":
         sim = AbeCoulombCollisionModel(n, p_1, w_1=w_1, N_2=n, particle_2=p_2, w_2=w_2, freeze_species_2=True)
     elif sim_type == "Nanbu":
-        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([w_1, w_2]), coulomb_logarithm=10.0, freeze_species_2=True)
+        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([w_1, w_2]), coulomb_logarithm=10.0, frozen_species=[False, True])
     else:
         raise ValueError("Invalid sim type")
 
@@ -112,7 +112,7 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
     if sim_type == "Abe":
         sim = AbeCoulombCollisionModel(n, p_1, w_1=w_1, N_2=n, particle_2=p_2, w_2=w_2, freeze_species_2=True)
     elif sim_type == "Nanbu":
-        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([w_1, w_2]), coulomb_logarithm=10.0, freeze_species_2=True)
+        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([w_1, w_2]), coulomb_logarithm=10.0, frozen_species=[False, True])
     else:
         raise ValueError("Invalid sim type")
 
@@ -205,7 +205,7 @@ def run_electon_beam_into_argon_gas_sim(sim_type):
     n = int(1e3)
 
     if sim_type == "Nanbu":
-        sim = NanbuCollisionModel(np.asarray([n, n, n]), np.asarray([p_1, p_2, p_3]), np.asarray([w_1, w_2, w_3]), coulomb_logarithm=10.0, freeze_species_2=True)
+        sim = NanbuCollisionModel(np.asarray([n, n, n]), np.asarray([p_1, p_2, p_3]), np.asarray([w_1, w_2, w_3]), coulomb_logarithm=10.0, frozen_species=np.asarray([False, True, True]))
     else:
         raise ValueError("Invalid sim type")
 
@@ -289,11 +289,11 @@ def run_electon_beam_into_argon_gas_sim(sim_type):
 
 
 if __name__ == '__main__':
-    # sim_type = "Abe"
-    sim_type = "Nanbu"
+    sim_type = "Abe"
+    # sim_type = "Nanbu"
 
-    # _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
-    # _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
+    _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
+    _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
     if sim_type == "Nanbu":
         _, _ = run_electon_beam_into_argon_gas_sim(sim_type)
 
