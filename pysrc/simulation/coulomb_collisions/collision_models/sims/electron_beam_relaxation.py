@@ -16,6 +16,7 @@ from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.abe_col
 from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import ChargedParticle
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
+from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 
 
 def get_relaxation_time(p_1, n_background, velocity):
@@ -53,7 +54,7 @@ def run_electron_beam_into_stationary_target_sim(sim_type):
     if sim_type == "Abe":
         sim = AbeCoulombCollisionModel(n, p_1, w_1=w_1, N_2=n, particle_2=p_2, w_2=w_2, freeze_species_2=True)
     elif sim_type == "Nanbu":
-        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), coulomb_logarithm=10.0, freeze_species_2=True)
+        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([w_1, w_2]), coulomb_logarithm=10.0, freeze_species_2=True)
     else:
         raise ValueError("Invalid sim type")
 
@@ -111,7 +112,7 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
     if sim_type == "Abe":
         sim = AbeCoulombCollisionModel(n, p_1, w_1=w_1, N_2=n, particle_2=p_2, w_2=w_2, freeze_species_2=True)
     elif sim_type == "Nanbu":
-        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), coulomb_logarithm=10.0, freeze_species_2=True)
+        sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([w_1, w_2]), coulomb_logarithm=10.0, freeze_species_2=True)
     else:
         raise ValueError("Invalid sim type")
 
@@ -190,10 +191,109 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
 
     return t, v_results
 
+def run_electon_beam_into_argon_gas_sim(sim_type):
+    """
+    Run a simulation of an electron beam into a background gas at a
+    given temperature
+    """
+    p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
+    p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
+    p_3 = ChargedParticle(39.948 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
+    w_1 = 1
+    w_2 = 1
+    w_3 = 1
+    n = int(1e3)
+
+    if sim_type == "Nanbu":
+        sim = NanbuCollisionModel(np.asarray([n, n, n]), np.asarray([p_1, p_2, p_3]), np.asarray([w_1, w_2, w_3]), coulomb_logarithm=10.0, freeze_species_2=True)
+    else:
+        raise ValueError("Invalid sim type")
+
+    # Set initial velocity conditions of beam
+    beam_velocity = np.sqrt(2 * 100 * PhysicalConstants.electron_charge / p_1.m)
+    velocities = np.zeros((3 * n, 3))
+    velocities[:n, :] = np.asarray([0.0, 0.0, beam_velocity])
+
+    # Set initial velocity conditions of background
+    k_T = 2.0
+    sigma = np.sqrt(2 * k_T * PhysicalConstants.electron_charge / p_2.m)
+    electron_velocities = np.random.normal(loc=0.0, scale=sigma, size=velocities[n:2*n, :].shape) / np.sqrt(3)
+    velocities[n:2*n, :] = electron_velocities
+    k_T = 0.02
+    sigma = np.sqrt(2 * k_T * PhysicalConstants.electron_charge / p_3.m)
+    ion_velocities = np.random.normal(loc=0.0, scale=sigma, size=velocities[2*n:, :].shape) / np.sqrt(3)
+    velocities[2*n:, :] = ion_velocities
+
+    tau = get_relaxation_time(p_1, n * w_2, beam_velocity)
+    dt = 0.01 * tau
+    final_time = 1.0 * tau
+
+    t, v_results = sim.run_sim(velocities, dt, final_time)
+
+    t /= tau
+    v_z_estimate = 1.0 - 3 * t
+    v_ort_estimate = 3.98 * t
+
+    fig, ax = plt.subplots(2, figsize=(10, 10))
+
+    l_v_z = ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0) / beam_velocity, color="b", label="<v_z>")
+    l_v_z_estimate = ax[0].plot(t, v_z_estimate, linestyle="--", color="c", label="<v_z_estimate>")
+    ax[0].set_xlim([0.0, t[-1]])
+    ax[0].set_xlabel("Timestep")
+    ax[0].set_ylabel("Velocities ms-1")
+    ax[0].set_ylim([0.0, 1.0])
+    ax[0].set_title("Beam Velocities")
+
+    # Twin axes for second plot to replicate paper set up
+    ax_twin = ax[0].twinx()
+    l_ort = ax_twin.plot(t, np.mean(v_results[:n, 0, :] ** 2 + v_results[:n, 1, :] ** 2, axis=0) / beam_velocity ** 2, color="r", label="<v_ort^2>")
+    l_ort_estimate = ax_twin.plot(t, v_ort_estimate, linestyle="--", color="y", label="<v_ort_estimate>")
+    ax_twin.set_ylabel("Square of Velocities (ms-1)^2")
+    ax_twin.set_ylim([0.0, 0.33])
+    
+    lines = l_v_z + l_v_z_estimate + l_ort + l_ort_estimate
+    labs = [l.get_label() for l in lines]
+    ax[0].legend(lines, labs)
+
+    ax[1].plot(t, np.mean(v_results[2*n:, 0, :], axis=0), label="<v_x>")
+    ax[1].plot(t, np.mean(v_results[2*n:, 1, :], axis=0), label="<v_y>")
+    ax[1].plot(t, np.mean(v_results[2*n:, 2, :], axis=0), label="<v_z>")
+    ax[1].set_xlim([0.0, t[-1]])
+    ax[1].legend()
+    ax[1].set_xlabel("Timestep")
+    ax[1].set_ylabel("Velocities ms-1")
+    ax[1].set_title("Background Velocities")
+
+    plt.show()
+
+    energy = p_1.m * np.sum(v_results[:n, 0, :] ** 2 + v_results[:n, 1, :] ** 2 + v_results[:n, 2, :] ** 2, axis=0)
+    energy += p_2.m * np.sum(v_results[n:, 0, :] ** 2 + v_results[n:, 1, :] ** 2 + v_results[n:, 2, :] ** 2, axis=0)
+    x_mom = p_1.m * np.sum(v_results[:n, 0, :], axis=0) + p_2.m * np.sum(v_results[n:, 0, :], axis=0)
+    y_mom = p_1.m * np.sum(v_results[:n, 1, :], axis=0) + p_1.m * np.sum(v_results[n:, 1, :], axis=0)
+    z_mom = p_1.m * np.sum(v_results[:n, 2, :], axis=0) + p_1.m * np.sum(v_results[n:, 2, :], axis=0)
+
+    fig, ax = plt.subplots(2)
+
+    ax[0].plot(t, energy)
+    ax[0].set_title("Conservation of Energy")
+    ax[1].plot(t, x_mom, label="x momentum")
+    ax[1].plot(t, y_mom, label="y momentum")
+    ax[1].plot(t, z_mom, label="z momentum")
+    ax[1].legend()
+    ax[1].set_title("Conservation of Momentum")
+
+    fig.suptitle("Conservation Plots")
+    plt.show()
+
+    return t, v_results
+
 
 if __name__ == '__main__':
     # sim_type = "Abe"
     sim_type = "Nanbu"
 
-    _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
-    _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
+    # _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
+    # _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
+    if sim_type == "Nanbu":
+        _, _ = run_electon_beam_into_argon_gas_sim(sim_type)
+
