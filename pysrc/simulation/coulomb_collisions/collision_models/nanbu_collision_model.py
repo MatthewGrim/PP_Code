@@ -20,7 +20,8 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 
 class NanbuCollisionModel(object):
-    def __init__(self, number_densities, particles, particle_weightings, coulomb_logarithm=None, frozen_species=None):
+    def __init__(self, number_densities, particles, particle_weightings, 
+                 coulomb_logarithm=None, frozen_species=None, include_self_collisions=False):
         """
         Initialiser for Nanbu simulation class
 
@@ -85,6 +86,9 @@ class NanbuCollisionModel(object):
 
         # Set coulomb logarithm to a fixed value if it is specified
         self.__coulomb_logarithm = coulomb_logarithm
+
+        # Set boolean to determine if self collisions are enabled
+        self.__include_self_collisions = include_self_collisions
 
     def __calculate_s(self, idx_A, idx_B, g_mag, dt):
         """
@@ -299,9 +303,50 @@ class NanbuCollisionModel(object):
                     velocities_B = velocities_B[indices_B.argsort(), :]
                     new_vel[start_A:start_A+n, :] = velocities_A
                     new_vel[start_B:start_B+n, :] = velocities_B
-                    
-                    # Setting temperature to None so that the code will break if coulomb logarithm is not set
-                    self.temperature = None
+
+            if self.__include_self_collisions:
+                n /= 2
+
+                for i in range(self.__num_species):
+                    start = self.__species_start_idx[i]
+
+                    # Randomise velocities
+                    current_state = np.random.get_state()
+                    indices_A = np.asarray(range(n))
+                    indices_B = np.asarray(range(n))
+                    velocities_A = new_vel[start_A:start_A+n, :]
+                    velocities_B = new_vel[start_A+n:start_A+2*n, :]
+                    np.random.shuffle(velocities_A)
+                    np.random.shuffle(velocities_B)
+                    np.random.set_state(current_state)
+                    np.random.shuffle(indices_A)
+                    np.random.shuffle(indices_B)
+
+                    # Calculate relative velocities of species pair
+                    g_components = velocities_A - velocities_B
+                    g_mag = np.sqrt(g_components[:, 0] ** 2 + g_components[:, 1] ** 2 + g_components[:, 2] ** 2)
+
+                    # Calculate parameter s
+                    s = self.__calculate_s(i, i, g_mag, dt)
+
+                    # Calculate parameter A
+                    A = self.__calculate_A(s)
+
+                    # Calculate scattering angle chi
+                    cos_chi = self.__calculate_cos_chi(A, s)
+                    epsilon = np.random.uniform(0, 2 * np.pi, g_mag.shape)
+
+                    # Calculate post collisional velocities
+                    self.__calculate_post_collision_velocities(i, i, velocities_A, velocities_B, g_components, g_mag, cos_chi, epsilon)
+
+                    # Unshuffle velocities
+                    velocities_A = velocities_A[indices_A.argsort(), :]
+                    velocities_B = velocities_B[indices_B.argsort(), :]
+                    new_vel[start_A:start_A+n, :] = velocities_A
+                    new_vel[start_A+n:start_A+2*n, :] = velocities_B
+
+            # Setting temperature to None so that the code will break if coulomb logarithm is not set
+            self.temperature = None
 
         return new_vel
         
