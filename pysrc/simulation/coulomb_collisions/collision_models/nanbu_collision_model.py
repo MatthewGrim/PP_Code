@@ -215,6 +215,24 @@ class NanbuCollisionModel(object):
         if not self.__frozen_species[idx_B]:
             vel_B += B_factor * deflection_vec
 
+    def __simulate_coulomb_collisions(self, idx_A, idx_B, velocities_A, velocities_B, dt):
+        # Calculate relative velocities of species pair
+        g_components = velocities_A - velocities_B
+        g_mag = np.sqrt(g_components[:, 0] ** 2 + g_components[:, 1] ** 2 + g_components[:, 2] ** 2)
+
+        # Calculate parameter s
+        s = self.__calculate_s(idx_A, idx_B, g_mag, dt)
+
+        # Calculate parameter A
+        A = self.__calculate_A(s)
+
+        # Calculate scattering angle chi
+        cos_chi = self.__calculate_cos_chi(A, s)
+        epsilon = np.random.uniform(0, 2 * np.pi, g_mag.shape)
+
+        # Calculate post collisional velocities
+        self.__calculate_post_collision_velocities(idx_A, idx_B, velocities_A, velocities_B, g_components, g_mag, cos_chi, epsilon)
+
     def single_time_step(self, velocities, dt):
         if self.__num_species == 1:
             n = self.__number_densities[0] / 2
@@ -230,22 +248,8 @@ class NanbuCollisionModel(object):
             np.random.shuffle(indices[:n])
             np.random.shuffle(indices[n:])
 
-            # Calculate relative velocities of species pair
-            g_components = velocities_A - velocities_B
-            g_mag = np.sqrt(g_components[:, 0] ** 2 + g_components[:, 1] ** 2 + g_components[:, 2] ** 2)
-
-            # Calculate parameter s
-            s = self.__calculate_s(0, 0, g_mag, dt)
-
-            # Calculate parameter A
-            A = self.__calculate_A(s)
-
-            # Calculate scattering angle chi
-            cos_chi = self.__calculate_cos_chi(A, s)
-            epsilon = np.random.uniform(0, 2 * np.pi, g_mag.shape)
-
-            # Calculate post collisional velocities
-            self.__calculate_post_collision_velocities(0, 0, velocities_A, velocities_B, g_components, g_mag, cos_chi, epsilon)
+            # Simulate collisions
+            self.__simulate_coulomb_collisions(0, 0, velocities_A, velocities_B, dt)
 
             # Unshuffle velocities
             velocities[:n, :] = velocities_A
@@ -277,26 +281,8 @@ class NanbuCollisionModel(object):
                     np.random.shuffle(indices_A)
                     np.random.shuffle(indices_B)
 
-                    # Calculate relative velocities of species pair
-                    g_components = velocities_A - velocities_B
-                    assert not np.any(np.isnan(g_components))
-                    g_mag = np.sqrt(g_components[:, 0] ** 2 + g_components[:, 1] ** 2 + g_components[:, 2] ** 2)
-                    assert not np.any(np.isnan(g_mag))
-
-                    # Calculate parameter s
-                    s = self.__calculate_s(i, j, g_mag, dt)
-                    assert not np.any(np.isnan(s))
-
-                    # Calculate parameter A
-                    A = self.__calculate_A(s)
-                    assert not np.any(np.isnan(A))
-
-                    # Calculate scattering angle chi
-                    cos_chi = self.__calculate_cos_chi(A, s)
-                    epsilon = np.random.uniform(0, 2 * np.pi, g_mag.shape)
-
-                    # Calculate post collisional velocities
-                    self.__calculate_post_collision_velocities(i, j, velocities_A, velocities_B, g_components, g_mag, cos_chi, epsilon)
+                    # Simulate collisions
+                    self.__simulate_coulomb_collisions(i, j, velocities_A, velocities_B, dt)
 
                     #Unshuffle velocities
                     velocities_A = velocities_A[indices_A.argsort(), :]
@@ -322,22 +308,8 @@ class NanbuCollisionModel(object):
                     np.random.shuffle(indices_A)
                     np.random.shuffle(indices_B)
 
-                    # Calculate relative velocities of species pair
-                    g_components = velocities_A - velocities_B
-                    g_mag = np.sqrt(g_components[:, 0] ** 2 + g_components[:, 1] ** 2 + g_components[:, 2] ** 2)
-
-                    # Calculate parameter s
-                    s = self.__calculate_s(i, i, g_mag, dt)
-
-                    # Calculate parameter A
-                    A = self.__calculate_A(s)
-
-                    # Calculate scattering angle chi
-                    cos_chi = self.__calculate_cos_chi(A, s)
-                    epsilon = np.random.uniform(0, 2 * np.pi, g_mag.shape)
-
-                    # Calculate post collisional velocities
-                    self.__calculate_post_collision_velocities(i, i, velocities_A, velocities_B, g_components, g_mag, cos_chi, epsilon)
+                    # Simulate collisions
+                    self.__simulate_coulomb_collisions(i, i, velocities_A, velocities_B, dt)
 
                     # Unshuffle velocities
                     velocities_A = velocities_A[indices_A.argsort(), :]
@@ -350,7 +322,6 @@ class NanbuCollisionModel(object):
 
         return new_vel
         
-
     def run_sim(self, velocities, dt, final_time, seed=1):
         """
         Run simulation
