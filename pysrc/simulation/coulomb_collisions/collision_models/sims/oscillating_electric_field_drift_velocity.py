@@ -21,7 +21,7 @@ from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 def run_sim():
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(39.948 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
-    n = int(1e4)
+    n = int(1e5)
 
     sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), 
                               coulomb_logarithm=15.9, frozen_species=np.asarray([False, True]))
@@ -37,42 +37,61 @@ def run_sim():
     velocities[n:, :] = ion_velocities
 
     V = np.sqrt(8.0 * k_T / (np.pi * p_1.m))
-    f = 100e3
-    t_p = 1 / f
-    omega = 2 * np.pi * t_p
-    dt = 2.5e-7
-    J = t_p / dt
-    t = 0.0
-    n = 1
-    times = [t]
-    v_squared_results = []
-    I = np.zeros((n, 3))
-    I[:, :] = np.asarray([1.0, 0.0, 0.0])
-    new_vel = np.copy(velocities)
-    while t < 50.0 * t_p:
-        I_results = []
-        while t < n * t_p:
-            print(t / t_p)
-            # Accelerate particles due to field
-            new_vel[:n, :] -= I * V * np.sin(omega * t)
+    num_periods = 10.0
+    frequencies = [1e5, 1e6]
+    v_squared_results = []   
+    for i, f in enumerate(frequencies):
+        t_p = 1 / f
+        omega = 2 * np.pi * f
+        dt = t_p / 10.0
+        dt = min(dt, 2.5e-7)
+        t = 0.0
+        n = 1
+        times = [t]
+        v_squared_results.append([0.0])
+        I = np.zeros((n, 3))
+        I[:, :] = np.asarray([1.0, 0.0, 0.0])
+        new_vel = np.copy(velocities)
+        while t < num_periods * t_p:
+            I_results = []
+            v_means = []
+            while t < n * t_p:
+                print(t / t_p)
+                # Accelerate particles due to field
+                new_vel[:n, :] -= I * V * np.sin(omega * t)
 
-            # Carry out coulomb collisions
-            new_vel = sim.single_time_step(new_vel, dt)
+                # Carry out coulomb collisions
+                new_vel = sim.single_time_step(new_vel, dt)
+                
+                # Calculate I
+                v_mean = np.mean(np.sqrt(new_vel[:n, 0] ** 2 + new_vel[:n, 1] ** 2 + new_vel[:n, 2] ** 2))
+                current = v_mean ** 2 * dt
+                v_means.append(v_mean)
+                I_results.append(current)
+
+                # Correct velocities
+                new_vel[:n, :] += I * V * np.sin(omega * t)
+
+                t += dt
             
-            # Calculate I
-            current = np.mean(np.sqrt(new_vel[:n, 0] ** 2 + new_vel[:n, 1] ** 2 + new_vel[:n, 2] ** 2)) ** 2
-            I_results.append(current)
+            # plt.figure()
+            # plt.plot(v_means)
+            # plt.show()
 
-            # Correct velocities
-            new_vel[:n, :] -= I * V * np.sin(omega * t)
+            v = np.sum(np.asarray(I_results)) / t_p
+            v_squared_results[i].append(v / V ** 2)
+            n += 1
 
-            t += dt
-        
-        v_squared_results.append(np.sum(np.asarray(I_results)) / t_p)
-
+    # Plot results
     plt.figure()
-    plt.plot(v_squared_results / V ** 2)
+    for v_squared in v_squared_results:
+        plt.plot(np.asarray(v_squared) ** 2)
     plt.show()
+
+    # Save results
+    v_squared_results = np.asarray(v_squared_results)
+    np.savetxt("v_squared_results", v_squared_results)
+
 
 if __name__ == '__main__':
     run_sim()
