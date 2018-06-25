@@ -84,14 +84,21 @@ def generate_sim_results(n, T):
     # ax[1].plot(t, v_mag)
     # plt.show()
 
-    # Electron beam sim
-    p_1 = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
-    p_2 = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
-    w_1 = 1
-    w_2 = 10
-    n = int(1e3)
-    beam_velocity = 1.0
+    # Set up beam sim
+    alpha = False
+    if alpha:
+        p_1 = ChargedParticle(6.64424e-27, 2 * PhysicalConstants.electron_charge)
+        energy = 3.5e6 * PhysicalConstants.electron_charge
+    else:
+        p_1 = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
+        energy = 50e3 * PhysicalConstants.electron_charge
 
+    beam_velocity = np.sqrt(2 * energy / p_1.m)
+    p_2 = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
+    w_1 = int(1e3)
+    w_2 = int(1)
+    n = int(1e3)
+    
     sim = AbeCoulombCollisionModel(n, p_1, w_1=w_1, N_2=n, particle_2=p_2, w_2=w_2, freeze_species_2=False)
     
     velocities = np.zeros((2 * n, 3))
@@ -118,7 +125,7 @@ def generate_sim_results(n, T):
     ax[0].plot(t, np.mean(v_results[:n, 0, :] ** 2 + v_results[:n, 1, :] ** 2, axis=0) / beam_velocity ** 2, label="<v_ort^2>")
     ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0), label="<v_z_beam>")
     ax[0].plot(t, np.mean(v_results[n:, 2, :], axis=0), label="<v_z_background>")
-    ax[0].set_ylim([0.0, 1.0])
+    # ax[0].set_ylim([0.0, 1.0])
     ax[0].set_xlim([0.0, t[-1]])
     ax[0].legend()
     ax[0].set_xlabel("Timestep")
