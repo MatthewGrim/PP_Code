@@ -32,12 +32,12 @@ class AbeCoulombCollisionModel(object):
         freeze_species_2: boolean to determine if second species is
                           frozen so that its velocities are not updated
         """
-        assert isinstance(N_1, int), N_1
-        assert isinstance(w_1, int), w_1
+        assert isinstance(N_1, int) or isinstance(N_1, long), N_1
+        assert isinstance(w_1, int) or isinstance(w_1, long), w_1
         assert isinstance(particle_1, ChargedParticle), particle_1
-        assert N_2 is None or isinstance(N_2, int), N_2
+        assert N_2 is None or isinstance(N_2, int) or isinstance(N_2, long), N_2
+        assert w_2 is None or isinstance(w_2, int) or isinstance(w_2, long), w_2
         assert particle_2 is None or isinstance(particle_2, ChargedParticle), particle_2
-        assert w_2 is None or isinstance(w_2, int), w_2
 
         # Define first particle species
         self.__m_1 = particle_1.m

@@ -75,20 +75,23 @@ def generate_sim_results(number_densities, T, alpha = False):
         t_theory[i] = tau
 
     # Save results
-    np.savetxt("{}_energies", np.asarray(energies))
-    np.savetxt("{}_velocities", np.asarray(velocities))
-    np.savetxt("{}_half_times", t_halves)
+    np.savetxt("{}_energies".format(name), np.asarray(energies))
+    np.savetxt("{}_velocities".format(name), np.asarray(velocities))
+    np.savetxt("{}_half_times".format(name), t_halves)
 
     # Plot results
     plt.figure()
-    plt.loglog(number_densities, t_halves)
-    plt.loglog(number_densities, t_theory)
+
+    plt.loglog(number_densities, t_halves, label="Simulation")
+    plt.loglog(number_densities, t_theory, label="Theoretical values")
+    
+    plt.legend()
     plt.savefig("energy_half_times")
     plt.show()
 
 
 if __name__ == '__main__':
-    number_densities = np.logspace(14, 18, 4)
+    number_densities = np.logspace(22, 26, 4)
     temperature = 10000.0
     generate_sim_results(number_densities, temperature)
 
