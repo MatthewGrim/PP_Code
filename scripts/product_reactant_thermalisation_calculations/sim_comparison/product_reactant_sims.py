@@ -18,135 +18,77 @@ from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.abe_col
 from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
 
 
-def get_relaxation_time(p_1, n_background, velocity):
-    """
-    Get the momentum loss rate for a particular particle collision,
-    where one species is assumed stationary. This equation is specialised
-    to the case where the beam and background species are the same
-
-    p_1: particle forming beam and background
-    n_background: number density pof background species
-    temperature: temperature characterising beam
-    """
-
-    # Approximate time scale of reaction
-    coulomb_logarithm = 10.0
-    particle_energy = 0.5 * p_1.m * velocity ** 2
-
-    tau = 8.0 * np.pi * np.sqrt(2 * p_1.m * particle_energy ** 3)
-    tau *= PhysicalConstants.epsilon_0 ** 2
-    tau /= n_background * p_1.q ** 4 * coulomb_logarithm
-
-    return tau
-
-def generate_sim_results(n, T):
-    # # Generate charged particles
-    # deuterium = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
-    # electron = ChargedParticle(1e31, -PhysicalConstants.electron_charge)
-
-    # # Get deuterium velocity
-    # v_deuterium = 1.0
-
-    # N = int(1e3)
-    # n = N
-
-    # # Generate simulation
-    # w_2 = 1
-    # sim = AbeCoulombCollisionModel(N, electron, w_1=1, N_2=N, particle_2=electron, w_2=w_2, freeze_species_2=True)
-
-    # # Generate velocities
-    # velocities = np.zeros((2 * N, 3))
-    # velocities[:N, :] = np.asarray([0.0, 0.0, v_deuterium])
-    # velocities[N:] = np.asarray([0.0, 0.0, 0.0])
-
-    # # Approximate time scale of reaction
-    # impact_parameter_ratio = 1.0    # Is not necessary for this analysis
-    # reactant_collision = CoulombCollision(electron, electron,
-    #                                       impact_parameter_ratio,
-    #                                       v_deuterium)
-    # reactant_relaxation = RelaxationProcess(reactant_collision)
-    # deuterium_kinetic_frequency = reactant_relaxation.kinetic_loss_stationary_frequency(n, T, v_deuterium)
-    # tau = 1.0 / deuterium_kinetic_frequency
-    # dt = 0.01 * tau
-    # final_time = 2.0 * tau
-
-    # # Run sim
-    # t, v_results = sim.run_sim(velocities, dt, final_time)
-
-    # # Get and plot energies
-    # v_mag = np.mean(np.sqrt(v_results[:N, 0, :] ** 2 + v_results[:N, 1, :] ** 2 + v_results[:N, 2, :] ** 2), axis=0)
-    # energies = 0.5 * deuterium.m * v_mag 
-    # fig, ax = plt.subplots(2)
-    # ax[0].plot(t, energies)
-    # ax[1].plot(t, np.mean(v_results[:N, 0, :], axis=0))
-    # ax[1].plot(t, np.mean(v_results[:N, 1, :], axis=0))
-    # ax[1].plot(t, np.mean(v_results[:N, 2, :], axis=0))
-    # ax[1].plot(t, v_mag)
-    # plt.show()
-
+def generate_sim_results(number_densities, T, alpha = False):
     # Set up beam sim
-    alpha = False
     if alpha:
+        name = "product"
         p_1 = ChargedParticle(6.64424e-27, 2 * PhysicalConstants.electron_charge)
         energy = 3.5e6 * PhysicalConstants.electron_charge
     else:
+        neam = "reactant"
         p_1 = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
         energy = 50e3 * PhysicalConstants.electron_charge
-
     beam_velocity = np.sqrt(2 * energy / p_1.m)
     p_2 = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
-    w_1 = int(1e3)
-    w_2 = int(1)
-    n = int(1e3)
     
-    sim = AbeCoulombCollisionModel(n, p_1, w_1=w_1, N_2=n, particle_2=p_2, w_2=w_2, freeze_species_2=False)
+    # Set simulation independent parameters
+    N = int(1e3)
+    w_1 = int(1)
     
-    velocities = np.zeros((2 * n, 3))
-    velocities[:n, :] = np.asarray([0.0, 0.0, beam_velocity])
-    velocities[n:] = np.asarray([0.0, 0.0, 0.0])
+    # Generate result lists
+    energy_results = []
+    velocity_list = []
+    t_halves = np.zeros(number_densities.shape)
+    t_theory = np.zeros(number_densities.shape)
+    
+    # Run simulations
+    for i, n in enumerate(number_densities): 
+        # Instantiate simulation
+        w_2 = int(n / N)
+        sim = AbeCoulombCollisionModel(N, p_1, w_1=w_1, N_2=N, particle_2=p_2, w_2=w_2, freeze_species_2=False)
+        
+        # Set up velocities
+        velocities = np.zeros((2 * N, 3))
+        velocities[:N, :] = np.asarray([0.0, 0.0, beam_velocity])
+        velocities[N:] = np.asarray([0.0, 0.0, 0.0])
 
-    tau = get_relaxation_time(p_1, n * w_2, beam_velocity)
-    impact_parameter_ratio = 1.0    # Is not necessary for this analysis
-    reactant_collision = CoulombCollision(p_1, p_2,
-                                          impact_parameter_ratio,
-                                          beam_velocity)
-    reactant_relaxation = RelaxationProcess(reactant_collision)
-    deuterium_kinetic_frequency = reactant_relaxation.kinetic_loss_stationary_frequency(n * w_2, T, beam_velocity)
-    tau = 1.0 / deuterium_kinetic_frequency
-    dt = 0.01 * tau
-    final_time = 4.0 * tau
+        # Get approximate time scale
+        impact_parameter_ratio = 1.0    # Is not necessary for this analysis
+        reactant_collision = CoulombCollision(p_1, p_2,
+                                              impact_parameter_ratio,
+                                              beam_velocity)
+        reactant_relaxation = RelaxationProcess(reactant_collision)
+        deuterium_kinetic_frequency = reactant_relaxation.kinetic_loss_stationary_frequency(N * w_2, T, beam_velocity)
+        tau = 1.0 / deuterium_kinetic_frequency
+        dt = 0.01 * tau
+        final_time = 4.0 * tau
 
-    t, v_results = sim.run_sim(velocities, dt, final_time)
+        t, v_results = sim.run_sim(velocities, dt, final_time)
 
-    t /= tau
+        # Get salient results
+        velocities = np.mean(np.sqrt(v_results[:N, 0, :] ** 2 + v_results[:N, 1, :] ** 2 + v_results[:N, 2, :] ** 2), axis=0)
+        energies = 0.5 * p_1.m * velocities ** 2
 
-    fig, ax = plt.subplots(2, figsize=(10, 10))
+        energy_time_interpolator = interp1d(energies / energy, t)
+        t_half = energy_time_interpolator(0.5)
+        t_halves[i] = t_half
+        t_theory[i] = tau
 
-    ax[0].plot(t, np.mean(v_results[:n, 0, :] ** 2 + v_results[:n, 1, :] ** 2, axis=0) / beam_velocity ** 2, label="<v_ort^2>")
-    ax[0].plot(t, np.mean(v_results[:n, 2, :], axis=0), label="<v_z_beam>")
-    ax[0].plot(t, np.mean(v_results[n:, 2, :], axis=0), label="<v_z_background>")
-    # ax[0].set_ylim([0.0, 1.0])
-    ax[0].set_xlim([0.0, t[-1]])
-    ax[0].legend()
-    ax[0].set_xlabel("Timestep")
-    ax[0].set_ylabel("Velocities ms-1")
-    ax[0].set_title("Beam Velocities")
+    # Save results
+    np.savetxt("{}_energies", np.asarray(energies))
+    np.savetxt("{}_velocities", np.asarray(velocities))
+    np.savetxt("{}_half_times", t_halves)
 
-    ax[1].plot(t, np.mean(v_results[n:, 0, :], axis=0), label="<v_x>")
-    ax[1].plot(t, np.mean(v_results[n:, 1, :], axis=0), label="<v_y>")
-    ax[1].plot(t, np.mean(v_results[n:, 2, :], axis=0), label="<v_z>")
-    ax[1].legend()
-    ax[1].set_xlabel("Timestep")
-    ax[1].set_ylabel("Velocities ms-1")
-    ax[1].set_title("Background Velocities")
-
+    # Plot results
+    plt.figure()
+    plt.loglog(number_densities, t_halves)
+    plt.loglog(number_densities, t_theory)
+    plt.savefig("energy_half_times")
     plt.show()
-
-    print(np.mean(v_results[:n, 2, :], axis=0)[-1])
 
 
 if __name__ == '__main__':
-    number_densities = int(1e4)
+    number_densities = np.logspace(14, 18, 4)
     temperature = 10000.0
     generate_sim_results(number_densities, temperature)
 

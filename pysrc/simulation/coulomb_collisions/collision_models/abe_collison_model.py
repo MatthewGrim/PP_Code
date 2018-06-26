@@ -32,12 +32,12 @@ class AbeCoulombCollisionModel(object):
         freeze_species_2: boolean to determine if second species is
                           frozen so that its velocities are not updated
         """
-        assert isinstance(N_1, int)
-        assert isinstance(w_1, int)
-        assert isinstance(particle_1, ChargedParticle)
-        assert N_2 is None or isinstance(N_2, int)
-        assert particle_2 is None or isinstance(particle_2, ChargedParticle)
-        assert w_2 is None or isinstance(w_2, int)
+        assert isinstance(N_1, int), N_1
+        assert isinstance(w_1, int), w_1
+        assert isinstance(particle_1, ChargedParticle), particle_1
+        assert N_2 is None or isinstance(N_2, int), N_2
+        assert particle_2 is None or isinstance(particle_2, ChargedParticle), particle_2
+        assert w_2 is None or isinstance(w_2, int), w_2
 
         # Define first particle species
         self.__m_1 = particle_1.m
@@ -101,7 +101,7 @@ class AbeCoulombCollisionModel(object):
 
         return indices
 
-    def calculate_post_collision_velocities(self, v_1, v_2, dt):
+    def calculate_post_collision_velocities(self, v_1, v_2, dt, idx_1, idx_2):
         """
         Calculate the post collisional velocities of  a given pair of particles
         """
@@ -109,6 +109,7 @@ class AbeCoulombCollisionModel(object):
         u_rel = v_1 - v_2
         u = vector_ops.magnitude(u_rel)
         u_xy = np.sqrt(u_rel[0] ** 2 + u_rel[1] ** 2)
+        u = 1e-16 if u < 1e-16 else u
 
         # Step 2 - Get scattering angles THETA and PHI
         PHI = np.random.uniform(0.0, 2.0 * np.pi)
@@ -118,6 +119,7 @@ class AbeCoulombCollisionModel(object):
         delta_squared = self.__q_1 ** 2 * self.__q_2 ** 2 * max(self.__n_1, self.__n_2)
         delta_squared *= dt * self.__coulomb_logarithm
         delta_squared /= 8.0 * np.pi * u ** 3 * self.__m_eff ** 2 * PhysicalConstants.epsilon_0 ** 2
+        assert not np.isnan(delta_squared) and not np.isinf(delta_squared), "{}, {}".format(delta_squared, u)
 
         delta = np.random.normal(0.0, np.sqrt(delta_squared))
         s_theta = 2 * delta / (1 + delta ** 2)
@@ -137,6 +139,8 @@ class AbeCoulombCollisionModel(object):
             du[0] = u * s_theta * c_phi
             du[1] = u * s_theta * s_phi
             du[2] = -u * one_minus_c_theta
+
+        assert not np.any(np.isnan(du)), "{}, {}, {}, {}".format(du, delta, s_theta, one_minus_c_theta)
 
         # Step 4 - Update velocities
         P_1 = 1.0 if np.random.uniform(0, 1) <= self.__collision_threshold_1 else 0.0
@@ -165,12 +169,13 @@ class AbeCoulombCollisionModel(object):
             # Step 2 - Calculate post-collisional velocities
             new_vel = np.zeros(vel.shape)
             for i in range(vel.shape[0] // 2):
-                idx = 2 * i
-                v_1 = vel[idx, :]
-                v_2 = vel[idx + 1, :]
-                new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt)
-                new_vel[idx, :] = new_v_1
-                new_vel[idx + 1, :] = new_v_2
+                idx_1 = 2 * i
+                idx_2 = idx_1 + 1
+                v_1 = vel[idx_1, :]
+                v_2 = vel[idx_2, :]
+                new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt, idx_1, idx_2)
+                new_vel[idx_1, :] = new_v_1
+                new_vel[idx_2, :] = new_v_2
         else:
             assert(self.__N_1 == self.__N_2), "Different number of particles is not implemented"
 
@@ -184,7 +189,7 @@ class AbeCoulombCollisionModel(object):
                 idx_2 = self.__N_1 + i
                 v_1 = vel[idx_1, :]
                 v_2 = vel[idx_2, :]
-                new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt)
+                new_v_1, new_v_2 = self.calculate_post_collision_velocities(v_1, v_2, dt, idx_1, idx_2)
                 new_vel[idx_1, :] = new_v_1
                 new_vel[idx_2, :] = v_2 if self.__freeze_species_2 else new_v_2
 
