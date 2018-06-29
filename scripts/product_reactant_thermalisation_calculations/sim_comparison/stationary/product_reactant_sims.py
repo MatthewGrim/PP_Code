@@ -84,9 +84,9 @@ def generate_sim_results(number_densities, T):
             t_theory[name][i] = tau
 
         # Save results
-        np.savetxt("{}_{}_{}_half_times".format(name, N, dt_factor), t_halves[name])
-        np.savetxt("{}_{}_{}_velocities".format(name, N, dt_factor), velocity_results[name])
-        np.savetxt("{}_{}_{}_energies".format(name, N, dt_factor), energy_results[name])
+        np.savetxt("stationary_{}_{}_{}_half_times".format(name, N, dt_factor), t_halves[name], fmt='%s')
+        np.savetxt("stationary_{}_{}_{}_velocities".format(name, N, dt_factor), velocity_results[name], fmt='%s')
+        np.savetxt("stationary_{}_{}_{}_energies".format(name, N, dt_factor), energy_results[name], fmt='%s')
 
     # Plot results
     plt.figure()
