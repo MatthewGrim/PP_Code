@@ -47,7 +47,7 @@ def run_electron_beam_into_stationary_target_sim(sim_type):
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(1e31, -PhysicalConstants.electron_charge)
     w_1 = 1
-    w_2 = 1
+    w_2 = 10
     n = int(1e3)
     beam_velocity = 1.0
 
@@ -106,7 +106,7 @@ def run_electon_beam_into_electron_gas_sim(sim_type):
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     w_1 = 1
-    w_2 = 1
+    w_2 = 1000
     n = int(1e3)
 
     if sim_type == "Abe":
@@ -200,8 +200,8 @@ def run_electon_beam_into_argon_gas_sim(sim_type):
     p_2 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_3 = ChargedParticle(39.948 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
     w_1 = 1
-    w_2 = 1
-    w_3 = 1
+    w_2 = 1000
+    w_3 = 1000
     n = int(1e3)
 
     if sim_type == "Nanbu":
@@ -289,11 +289,11 @@ def run_electon_beam_into_argon_gas_sim(sim_type):
 
 
 if __name__ == '__main__':
-    sim_type = "Abe"
-    # sim_type = "Nanbu"
+    # sim_type = "Abe"
+    sim_type = "Nanbu"
 
-    _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
-    _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
+    # _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
+    # _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
     if sim_type == "Nanbu":
         _, _ = run_electon_beam_into_argon_gas_sim(sim_type)
 

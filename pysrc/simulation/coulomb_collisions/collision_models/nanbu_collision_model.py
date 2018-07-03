@@ -45,7 +45,6 @@ class NanbuCollisionModel(object):
             self.__number_densities = number_densities
             self.__frozen_species = frozen_species if frozen_species is not None else np.zeros(number_densities.shape).astype(bool)
             
-            assert np.all(self.__particle_weights == 1), "Weighted particles not handled"
             assert np.all(self.__number_densities == self.__number_densities[0]), "Variable simulated particles currently not handled"
 
             # Set boolean to determine if self collisions are enabled
@@ -104,8 +103,9 @@ class NanbuCollisionModel(object):
         if self.__num_species == 1:
             n = self.__number_densities[0] / 2
         else:
-            # Assume number density is equal for all species
-            n = self.__number_densities[0]
+            # Assume number of simulated particles is equal for all species and that species B is the 
+            # background species for the interaction
+            n = self.__number_densities[0] * self.__particle_weights[idx_B]
 
         # Get charges, and calculate m_eff for collisions
         q_A = self.__particles[idx_A].q
@@ -193,6 +193,15 @@ class NanbuCollisionModel(object):
         cos_chi: cosine of scattering angles
         epsilon: angle of rotation about x axis
         """
+        # Get particle weightings and collision probabilities
+        w_A = self.__particle_weights[idx_A]
+        w_B = self.__particle_weights[idx_B]
+        w_max = float(max(w_A, w_B))
+        collision_threshold_A = w_B / w_max
+        collision_threshold_B = w_A / w_max
+        Z_A = np.random.uniform(0, 1, size=(g_comp.shape[0], 1)) < collision_threshold_A 
+        Z_B = np.random.uniform(0, 1, size=(g_comp.shape[0], 1)) < collision_threshold_B 
+
         # Calculate mass factors
         m_A = self.__particles[idx_A].m
         m_B = self.__particles[idx_B].m
@@ -213,9 +222,9 @@ class NanbuCollisionModel(object):
         sin_chi = np.sqrt(1.0 - cos_chi ** 2)
         deflection_vec = (g_comp * (1.0 - cos_chi) + h_vec * sin_chi) 
         if not self.__frozen_species[idx_A]:
-            vel_A -= A_factor * deflection_vec
+            vel_A -= Z_A * A_factor * deflection_vec
         if not self.__frozen_species[idx_B]:
-            vel_B += B_factor * deflection_vec
+            vel_B += Z_B * B_factor * deflection_vec
 
     def __randomise_velocities(self, start_A, start_B, N_A, N_B, velocities):
         """
