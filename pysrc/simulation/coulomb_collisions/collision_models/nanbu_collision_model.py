@@ -337,8 +337,8 @@ class NanbuCollisionModel(object):
         dt: time step to be used in simulation
         final_time: time of simulation
         """
-        assert velocities.shape[0] == np.sum(self.__number_densities)
-        assert velocities.shape[1] == 3
+        assert velocities.shape[0] == np.sum(self.__number_densities), "{} != {}".format(velocities.shape[0], np.sum(self.__number_densities)) 
+        assert velocities.shape[1] == 3, velocities.shape[1]
 
         # # Set seed before simulation
         np.random.seed(seed)
