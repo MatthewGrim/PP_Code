@@ -10,6 +10,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
 import sys
+import os
 
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
 from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess
@@ -30,6 +31,11 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
     t_halves = dict()
     t_theory = dict()
     
+    # Make results directory if it does not exist
+    res_dir = "results"
+    if not os.path.exists(res_dir):
+        os.mkdir(res_dir)
+        
     # Run simulations
     names = ["reactant", "product"]
     for j, name in enumerate(names):
@@ -62,11 +68,11 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
             velocities[:N, :] = np.asarray([0.0, 0.0, beam_velocity])
 
             # Small maxwellian distribution used for background species
-            k_T = 0.001
-            sigma = np.sqrt(2 * k_T * PhysicalConstants.electron_charge / deuterium.m)
+            k_T = T * PhysicalConstants.boltzmann_constant
+            sigma = np.sqrt(2 * k_T / deuterium.m)
             deuterium_velocities = np.random.normal(loc=0.0, scale=sigma, size=velocities[N:2*N, :].shape) / np.sqrt(3)
             velocities[N:2*N, :] = deuterium_velocities
-            sigma = np.sqrt(2 * k_T * PhysicalConstants.electron_charge / electron.m)
+            sigma = np.sqrt(2 * k_T / electron.m)
             electron_velocities = np.random.normal(loc=0.0, scale=sigma, size=velocities[2*N:, :].shape) / np.sqrt(3)
             velocities[2*N:, :] = electron_velocities
             # velocities[N:] = np.asarray([0.0, 0.0, 0.0])
@@ -88,28 +94,30 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
 
             # Get salient results
             velocities = np.mean(np.sqrt(v_results[:N, 0, :] ** 2 + v_results[:N, 1, :] ** 2 + v_results[:N, 2, :] ** 2), axis=0)
-            energies = w_1 * 0.5 * p_1.m * np.sum(np.sqrt(v_results[:N, 0, :] ** 2 + v_results[:N, 1, :] ** 2 + v_results[:N, 2, :] ** 2), axis=0)
-            assert energies == w_1 * N * energy
+            energies = w_1 * 0.5 * p_1.m * np.sum(v_results[:N, 0, :] ** 2 + v_results[:N, 1, :] ** 2 + v_results[:N, 2, :] ** 2, axis=0)
+            assert np.isclose(energies[0], w_1 * N * energy), "{} != {}".format(energies[0], w_1 * N * energy)
             velocity_results[name].append(velocities)
-            energy_results[name].append(velocities)
+            energy_results[name].append(energies)
 
             velocities_deuterium = np.mean(np.sqrt(v_results[N:2*N, 0, :] ** 2 + v_results[N:2*N, 1, :] ** 2 + v_results[N:2*N, 2, :] ** 2), axis=0)
             energies_deuterium = w_b * 0.5 * deuterium.m * np.sum(np.sqrt(v_results[N:2*N, 0, :] ** 2 + v_results[N:2*N, 1, :] ** 2 + v_results[N:2*N, 2, :] ** 2), axis=0)
             velocities_electron = np.mean(np.sqrt(v_results[2*N:, 0, :] ** 2 + v_results[2*N:, 1, :] ** 2 + v_results[2*N:, 2, :] ** 2), axis=0)
             energies_electron = w_b * 0.5 * electron.m * np.sum(np.sqrt(v_results[2*N:, 0, :] ** 2 + v_results[2*N:, 1, :] ** 2 + v_results[2*N:, 2, :] ** 2), axis=0) 
 
+            # Plot results
+            fig, ax = plt.subplots(2)
+
+            ax[0].plot(t, velocities_deuterium, label="ions")
+            ax[0].plot(t, velocities_electron, label="electron")
+            ax[0].plot(t, velocities, label="beam")
+            ax[1].plot(t, energies_deuterium, label="ions")
+            ax[1].plot(t, energies_electron, label="electron")
+            ax[1].plot(t, energies, label="beam")
+            ax[1].plot(t, energies + energies_electron + energies_deuterium, label="total")
+
+            plt.legend()
+            plt.savefig(os.path.join(res_dir, "stationary_{}_{}_{}_{}.png".format(name, N, dt_factor, n)))
             if plot_individual_sims:
-                fig, ax = plt.subplots(2)
-
-                ax[0].plot(t, velocities_deuterium, label="ions")
-                ax[0].plot(t, velocities_electron, label="electron")
-                ax[0].plot(t, velocities, label="beam")
-                ax[1].plot(t, energies_deuterium, label="ions")
-                ax[1].plot(t, energies_electron, label="electron")
-                ax[1].plot(t, energies, label="beam")
-                ax[1].plot(t, energies + energies_electron + energies_deuterium, label="total")
-
-                plt.legend()
                 plt.show()
 
             # Get energy half times
@@ -119,9 +127,9 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
             t_theory[name][i] = tau
 
         # Save results
-        np.savetxt("stationary_{}_{}_{}_half_times".format(name, N, dt_factor), t_halves[name], fmt='%s')
-        np.savetxt("stationary_{}_{}_{}_velocities".format(name, N, dt_factor), velocity_results[name], fmt='%s')
-        np.savetxt("stationary_{}_{}_{}_energies".format(name, N, dt_factor), energy_results[name], fmt='%s')
+        np.savetxt(os.path.join(res_dir, "stationary_{}_{}_{}_half_times".format(name, N, dt_factor), t_halves[name]), fmt='%s')
+        np.savetxt(os.path.join(res_dir, "stationary_{}_{}_{}_velocities".format(name, N, dt_factor), velocity_results[name]), fmt='%s')
+        np.savetxt(os.path.join(res_dir, "stationary_{}_{}_{}_energies".format(name, N, dt_factor), energy_results[name]), fmt='%s')
 
     # Plot results
     plt.figure()
@@ -139,6 +147,6 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
 if __name__ == '__main__':
     number_densities = np.logspace(15, 25, 5)
     print("Simulated number densities: {}".format(number_densities))
-    temperature = 10000.0
-    generate_sim_results(number_densities, temperature, plot_individual_sims=True)
+    temperature = 1000.0
+    generate_sim_results(number_densities, temperature, plot_individual_sims=False)
 
