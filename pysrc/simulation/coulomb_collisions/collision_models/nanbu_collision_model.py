@@ -105,7 +105,7 @@ class NanbuCollisionModel(object):
         else:
             # Assume number of simulated particles is equal for all species and that species B is the 
             # background species for the interaction
-            n = self.__number_densities[0] * self.__particle_weights[idx_B]
+            n = long(self.__number_densities[0]) * self.__particle_weights[idx_B]
 
         # Get charges, and calculate m_eff for collisions
         q_A = self.__particles[idx_A].q
@@ -130,7 +130,8 @@ class NanbuCollisionModel(object):
         # Calculate s
         # b_90 = q_A * q_B / (2 * np.pi * PhysicalConstants.epsilon_0 * m_eff * g_mag ** 2)
         # s = n * g_mag * np.pi * b_90 ** 2 * coulomb_logarithm * dt
-        s = coulomb_logarithm / (4 * np.pi) * (q_A * q_B / (PhysicalConstants.epsilon_0 * m_eff)) ** 2 * n / g_mag ** 3 * dt
+        s = coulomb_logarithm / (4 * np.pi) * (q_A * q_B / (PhysicalConstants.epsilon_0 * m_eff)) ** 2
+        s *= n / g_mag ** 3 * dt
 
         return s
 
@@ -170,8 +171,8 @@ class NanbuCollisionModel(object):
 
             cos_chi[i] = cos_chi_val
     
-        for cos_chi_val in cos_chi:
-            assert -1.0 <= cos_chi_val <= 1.0, cos_chi_val
+        for i, cos_chi_val in enumerate(cos_chi):
+            assert -1.0 <= cos_chi_val <= 1.0, "{}, {}, {}, {}".format(cos_chi_val, s[i], A[i], U[i])
 
         if debug:
             plt.figure()
