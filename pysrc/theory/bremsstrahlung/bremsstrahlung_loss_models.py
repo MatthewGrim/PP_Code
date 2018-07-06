@@ -22,7 +22,7 @@ class MaxonBremsstrahlungRadiation(object):
 
 		n_e: number density (m-3)
 		T_e: electron temperature (in eV)
-		Z_eff: Effective ionisation
+		Z_eff: Effective ionisation - assumed to be 1.0 for fully ionised hydrogen, unless specified
 		"""
 		c = 3e8
 		m_c_2 = PhysicalConstants.electron_mass * c ** 2 / PhysicalConstants.electron_charge
