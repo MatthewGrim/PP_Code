@@ -13,7 +13,7 @@ import sys
 import os
 
 from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
-from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess
+from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess, MaxwellianRelaxationProcess
 from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
@@ -21,7 +21,7 @@ from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.nanbu_c
 
 def generate_sim_results(number_densities, T, plot_individual_sims=False):
     # Set simulation independent parameters
-    N = int(1e4)
+    N = int(1e3)
     dt_factor = 0.01
     w_1 = int(1)
     
@@ -75,18 +75,17 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
             sigma = np.sqrt(2 * k_T / electron.m)
             electron_velocities = np.random.normal(loc=0.0, scale=sigma, size=velocities[2*N:, :].shape) / np.sqrt(3)
             velocities[2*N:, :] = electron_velocities
-            # velocities[N:] = np.asarray([0.0, 0.0, 0.0])
 
             # Get approximate time scale
             impact_parameter_ratio = 1.0    # Is not necessary for this analysis
             tau = sys.float_info.max
-            for background_particle in [deuterium]:
+            for i, background_particle in enumerate([deuterium]):
                 reactant_collision = CoulombCollision(p_1, background_particle,
                                                       impact_parameter_ratio,
                                                       beam_velocity)
-                relaxation = RelaxationProcess(reactant_collision)
-                kinetic_frequency = relaxation.kinetic_loss_stationary_frequency(N * w_b, T, beam_velocity)
-                tau = min(tau, 1 / kinetic_frequency)
+                relaxation = MaxwellianRelaxationProcess(reactant_collision)
+                kinetic_frequency = relaxation.numerical_kinetic_loss_maxwellian_frequency(N * w_b, T, beam_velocity)
+                tau = min(tau, 1.0 / kinetic_frequency)
             dt = dt_factor * tau
             final_time = 4.0 * tau
 
@@ -94,15 +93,15 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
 
             # Get salient results
             velocities = np.mean(np.sqrt(v_results[:N, 0, :] ** 2 + v_results[:N, 1, :] ** 2 + v_results[:N, 2, :] ** 2), axis=0)
-            energies = w_1 * 0.5 * p_1.m * np.sum(v_results[:N, 0, :] ** 2 + v_results[:N, 1, :] ** 2 + v_results[:N, 2, :] ** 2, axis=0)
+            energies = 0.5 * p_1.m * np.mean(v_results[:N, 0, :] ** 2 + v_results[:N, 1, :] ** 2 + v_results[:N, 2, :] ** 2, axis=0)
             assert np.isclose(energies[0], w_1 * N * energy), "{} != {}".format(energies[0], w_1 * N * energy)
             velocity_results[name].append(velocities)
             energy_results[name].append(energies)
 
             velocities_deuterium = np.mean(np.sqrt(v_results[N:2*N, 0, :] ** 2 + v_results[N:2*N, 1, :] ** 2 + v_results[N:2*N, 2, :] ** 2), axis=0)
-            energies_deuterium = w_b * 0.5 * deuterium.m * np.sum(np.sqrt(v_results[N:2*N, 0, :] ** 2 + v_results[N:2*N, 1, :] ** 2 + v_results[N:2*N, 2, :] ** 2), axis=0)
+            energies_deuterium = 0.5 * deuterium.m * np.mean(v_results[N:2*N, 0, :] ** 2 + v_results[N:2*N, 1, :] ** 2 + v_results[N:2*N, 2, :] ** 2, axis=0)
             velocities_electron = np.mean(np.sqrt(v_results[2*N:, 0, :] ** 2 + v_results[2*N:, 1, :] ** 2 + v_results[2*N:, 2, :] ** 2), axis=0)
-            energies_electron = w_b * 0.5 * electron.m * np.sum(np.sqrt(v_results[2*N:, 0, :] ** 2 + v_results[2*N:, 1, :] ** 2 + v_results[2*N:, 2, :] ** 2), axis=0) 
+            energies_electron = 0.5 * electron.m * np.mean(v_results[2*N:, 0, :] ** 2 + v_results[2*N:, 1, :] ** 2 + v_results[2*N:, 2, :] ** 2, axis=0) 
 
             # Plot results
             fig, ax = plt.subplots(2)
@@ -119,6 +118,7 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
             plt.savefig(os.path.join(res_dir, "stationary_{}_{}_{}_{}.png".format(name, N, dt_factor, n)))
             if plot_individual_sims:
                 plt.show()
+            plt.close()
 
             # Get energy half times
             energy_time_interpolator = interp1d(energies / energies[0], t)
@@ -127,9 +127,9 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
             t_theory[name][i] = tau
 
         # Save results
-        np.savetxt(os.path.join(res_dir, "stationary_{}_{}_{}_half_times".format(name, N, dt_factor), t_halves[name]), fmt='%s')
-        np.savetxt(os.path.join(res_dir, "stationary_{}_{}_{}_velocities".format(name, N, dt_factor), velocity_results[name]), fmt='%s')
-        np.savetxt(os.path.join(res_dir, "stationary_{}_{}_{}_energies".format(name, N, dt_factor), energy_results[name]), fmt='%s')
+        np.savetxt(os.path.join(res_dir, "stationary_{}_{}_{}_half_times".format(name, N, dt_factor)), t_halves[name], fmt='%s')
+        np.savetxt(os.path.join(res_dir, "stationary_{}_{}_{}_velocities".format(name, N, dt_factor)), velocity_results[name], fmt='%s')
+        np.savetxt(os.path.join(res_dir, "stationary_{}_{}_{}_energies".format(name, N, dt_factor)), energy_results[name], fmt='%s')
 
     # Plot results
     plt.figure()
@@ -140,12 +140,12 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
     
     plt.title("Comparison of thermalisation rates of products and reactants")
     plt.legend()
-    plt.savefig("energy_half_times")
+    plt.savefig(os.path.join(res_dir, "energy_half_times"))
     plt.show()
 
 
 if __name__ == '__main__':
-    number_densities = np.logspace(15, 25, 5)
+    number_densities = np.logspace(20, 25, 3)
     print("Simulated number densities: {}".format(number_densities))
     temperature = 1000.0
     generate_sim_results(number_densities, temperature, plot_individual_sims=False)
