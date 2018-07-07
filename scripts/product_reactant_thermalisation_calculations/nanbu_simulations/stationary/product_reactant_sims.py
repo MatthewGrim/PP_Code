@@ -12,11 +12,11 @@ from scipy.interpolate import interp1d
 import sys
 import os
 
-from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
-from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess, MaxwellianRelaxationProcess
-from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
-from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
-from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
+from pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
+from pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess, MaxwellianRelaxationProcess
+from pysrc.utils.unit_conversions import UnitConversions
+from pysrc.utils.physical_constants import PhysicalConstants
+from pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
 
 
 def generate_sim_results(number_densities, T, plot_individual_sims=False):
@@ -79,7 +79,7 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
             # Get approximate time scale
             impact_parameter_ratio = 1.0    # Is not necessary for this analysis
             tau = sys.float_info.max
-            for i, background_particle in enumerate([deuterium]):
+            for background_particle in [deuterium]:
                 reactant_collision = CoulombCollision(p_1, background_particle,
                                                       impact_parameter_ratio,
                                                       beam_velocity)
