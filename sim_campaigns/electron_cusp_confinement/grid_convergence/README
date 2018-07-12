@@ -1,0 +1,2 @@
+study_001: First grid resolution study using arbitrary time steps between 2 * radius / velocity * dt_factor where dt_factor is between [0.1 - 0.0001]. These results are not consistent.
+study_002: Second pass at higher resolutions following Gummersall to see if his simulations are resolved. We use a dt_factor between 1.0 and 0.1 to see if they are converged. These simulations are long.

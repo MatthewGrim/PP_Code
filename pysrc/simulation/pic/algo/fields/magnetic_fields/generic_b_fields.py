@@ -120,9 +120,9 @@ class CombinedField(object):
         :param field_point: point at which the field is evaluated
         :return:
         """
-        b_tot = np.zeros(3)
+        b_tot = np.zeros(field_point.shape)
         for comp in self.component_fields:
-            b_comp = comp.b_field(field_point)
+            b_comp = comp.b_field(field_point[0])
             b_tot += b_comp
 
         return b_tot
