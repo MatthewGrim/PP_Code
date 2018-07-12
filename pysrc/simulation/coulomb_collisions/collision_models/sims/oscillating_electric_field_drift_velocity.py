@@ -21,9 +21,10 @@ from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
 def run_sim():
     p_1 = ChargedParticle(PhysicalConstants.electron_mass, -PhysicalConstants.electron_charge)
     p_2 = ChargedParticle(39.948 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
-    n = int(1e5)
+    n = int(1e4)
+    w = int(1e17)
 
-    sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([1, 1]), 
+    sim = NanbuCollisionModel(np.asarray([n, n]), np.asarray([p_1, p_2]), np.asarray([w, w]), 
                               coulomb_logarithm=15.9, frozen_species=np.asarray([False, True]))
 
     # Set initial velocity conditions of background
@@ -37,8 +38,8 @@ def run_sim():
     velocities[n:, :] = ion_velocities
 
     V = np.sqrt(8.0 * k_T / (np.pi * p_1.m))
-    num_periods = 10.0
-    frequencies = [1e5, 1e6]
+    num_periods = 50.0
+    frequencies = [1e4, 1e5]
     v_squared_results = []   
     for i, f in enumerate(frequencies):
         t_p = 1 / f
@@ -86,6 +87,7 @@ def run_sim():
     plt.figure()
     for v_squared in v_squared_results:
         plt.plot(np.asarray(v_squared) ** 2)
+        plt.scatter(range(len(v_squared)), np.asarray(v_squared) ** 2)
     plt.show()
 
     # Save results
