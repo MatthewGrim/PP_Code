@@ -12,16 +12,16 @@ from scipy.interpolate import interp1d
 import sys
 import os
 
-from pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
-from pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess, MaxwellianRelaxationProcess
-from pysrc.utils.unit_conversions import UnitConversions
-from pysrc.utils.physical_constants import PhysicalConstants
-from pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
+from plasma_physics.pysrc.theory.coulomb_collisions.coulomb_collision import CoulombCollision, ChargedParticle
+from plasma_physics.pysrc.theory.coulomb_collisions.relaxation_processes import RelaxationProcess, MaxwellianRelaxationProcess
+from plasma_physics.pysrc.utils.unit_conversions import UnitConversions
+from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
+from plasma_physics.pysrc.simulation.coulomb_collisions.collision_models.nanbu_collision_model import NanbuCollisionModel
 
 
 def generate_sim_results(number_densities, T, plot_individual_sims=False):
     # Set simulation independent parameters
-    N = int(1e3)
+    N = int(1e4)
     dt_factor = 0.01
     w_1 = int(1)
     
@@ -145,8 +145,8 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
 
 
 if __name__ == '__main__':
-    number_densities = np.logspace(20, 25, 3)
+    number_densities = np.logspace(15, 25, 10)
     print("Simulated number densities: {}".format(number_densities))
-    temperature = 1000.0
+    temperature = 100000.0
     generate_sim_results(number_densities, temperature, plot_individual_sims=False)
 
