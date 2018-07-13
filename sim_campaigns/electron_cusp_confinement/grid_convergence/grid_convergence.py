@@ -84,14 +84,15 @@ if __name__ == '__main__':
     # Generate Polywell field
     use_interpolator = True
     if use_interpolator:
-        loop_pts = 100
-        domain_pts = 100
+        to_kA = 1-3
+        loop_pts = 200
+        domain_pts = 130
         I = 1e4
         radius = 0.1
         loop_offset = 1.25
         dom_size = 1.1 * loop_offset * radius
-        file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * 1e-3, radius, loop_offset, domain_pts, loop_pts, dom_size)
-        file_path = os.path.join("..", "mesh_generation", "{}".format(I), file_name)
+        file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
+        file_path = os.path.join("..", "mesh_generation", "radius-{}m".format(radius), "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
         b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
     else:
         I = 1e4
@@ -147,9 +148,9 @@ if __name__ == '__main__':
     ax[2].legend()
     ax[3].legend()
 
-    plt.savefig("Grid_Convergence_Overall_{}_{}_{}.png".format(max_vel, I, radius))
+    plt.savefig("grid_Convergence_Overall_{}_{}_{}.png".format(max_vel, I, radius))
     plt.show()
 
     results = np.concatenate((t_results[-1], x_results[-1], y_results[-1], z_results[-1]))
-    np.savetxt("High_Res_{}.txt".format(dt_factors[-1]), results)
+    np.savetxt("high_res_{}.txt".format(dt_factors[-1]), results)
 
