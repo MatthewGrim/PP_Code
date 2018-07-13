@@ -42,7 +42,7 @@ class CurrentLoopTest(unittest.TestCase):
         """
         # Generate Interpolated field
         I = 1e6
-        loop_pts = 20
+        loop_pts = 40
         domain_pts = 50
         dom_size = 0.2
         radius = 0.15
@@ -50,14 +50,14 @@ class CurrentLoopTest(unittest.TestCase):
         file_path = os.path.join(file_name)
         interp_field = InterpolatedBField(file_path)
 
-        Z = np.linspace(-5.0, 5.0, 50)
+        Z = np.linspace(-dom_size, dom_size, 50)
         for i, z in enumerate(Z):
             analytic_z_field = CurrentLoop.mu_0 / 2 * I * radius ** 2 / ((radius ** 2 + z ** 2) ** (3.0 / 2.0))
 
-            b = interp_field.b_field(np.asarray([0.0, 0.0, z]))
-            B = magnitude(b)
+            b = interp_field.b_field(np.asarray([[0.0, 0.0, z]]))
+            B = magnitude(b[0])
 
-            self.assertAlmostEqual(analytic_z_field, B, 4)
+            self.assertAlmostEqual(B / analytic_z_field, 1.0, 2)
 
 
 if __name__ == '__main__':

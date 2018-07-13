@@ -11,7 +11,7 @@ import numpy as np
 
 from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import boris_solver
 from plasma_physics.pysrc.simulation.pic.simulations.analytic_single_particle_motion import solve_B_field, solve_E_field, solve_aligned_fields
-from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import ChargedParticle
+from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import PICParticle
 
 
 class BorisSolverTest(unittest.TestCase):
@@ -69,7 +69,7 @@ class BorisSolverTest(unittest.TestCase):
                 X = x
                 V = v
 
-            particle = ChargedParticle(1.0, Q[0], X_0, V_0)
+            particle = PICParticle(1.0, Q[0], X_0, V_0)
             B = b_field
             analytic_times, analytic_positions = solve_B_field(particle, B, final_time, num_pts=num_pts)
 
@@ -134,7 +134,7 @@ class BorisSolverTest(unittest.TestCase):
                 X = x
                 V = v
 
-            particle = ChargedParticle(1.0, Q[0], X_0, V_0)
+            particle = PICParticle(1.0, Q[0], X_0, V_0)
             E = e_field
             analytic_times, analytic_positions = solve_E_field(particle, E, final_time, num_pts=num_pts)
 
@@ -198,7 +198,7 @@ class BorisSolverTest(unittest.TestCase):
                     X = x
                     V = v
 
-                particle = ChargedParticle(1.0, Q[0], X_0[0], V_0[0])
+                particle = PICParticle(1.0, Q[0], X_0[0], V_0[0])
                 E = E_mag * direction * sign
                 B = B_mag * direction * sign
                 analytic_times, analytic_positions = solve_aligned_fields(particle, E, B, final_time, num_pts=num_pts)

@@ -18,8 +18,8 @@ def generate_current_loop_field():
     I = 1e6
     radius = 0.15
     loop_offset = 0.0
-    loop_pts = 20
-    loop = CurrentLoop(I, radius, np.asarray([-loop_offset, 0.0, 0.0]), np.asarray([1.0, 0.0, 0.0]), loop_pts)
+    loop_pts = 40
+    loop = CurrentLoop(I, radius, np.asarray([-loop_offset, 0.0, 0.0]), np.asarray([0.0, 0.0, 1.0]), loop_pts)
 
     # Calculate current loop field at all points
     domain_pts = 50
@@ -44,7 +44,7 @@ def generate_current_loop_field():
                 B[i, j, k] = magnitude(b)
 
     # Write output files
-    file_name = "../../../../testing/algo/fields/magnetic_fields/current_loop_{}_{}_{}_{}".format(I * 1e-6, loop_pts, domain_pts, dom_size)
+    file_name = "../../../testing/algo/fields/magnetic_fields/current_loop_{}_{}_{}_{}".format(I * 1e-6, loop_pts, domain_pts, dom_size)
     np.savetxt("{}_x".format(file_name), B_x.reshape((domain_pts, domain_pts ** 2)))
     np.savetxt("{}_y".format(file_name), B_y.reshape((domain_pts, domain_pts ** 2)))
     np.savetxt("{}_z".format(file_name), B_z.reshape((domain_pts, domain_pts ** 2)))
