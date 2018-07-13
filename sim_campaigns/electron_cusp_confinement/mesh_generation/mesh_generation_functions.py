@@ -28,7 +28,7 @@ def generate_polywell_fields(params):
     assert loop_offset >= 1.0
 
     dom_size = 1.1 * loop_offset * radius
-    file_dir = "{}".format(I)
+    file_dir = os.path.join("{}".format(radius), "{}".format(I))
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * 1e-3, radius, loop_offset, domain_pts, loop_pts, dom_size)
@@ -57,11 +57,11 @@ def generate_polywell_fields(params):
     for i, x in enumerate(X):
         for j, y in enumerate(Y):
             for k, z in enumerate(Z):
-                b = combined_field.b_field(np.asarray([x, y, z]))
-                B_x[i, j, k] = b[0]
-                B_y[i, j, k] = b[1]
-                B_z[i, j, k] = b[2]
-                B[i, j, k] = magnitude(b)
+                b = combined_field.b_field(np.asarray([[x, y, z]]))
+                B_x[i, j, k] = b[0, 0]
+                B_y[i, j, k] = b[0, 1]
+                B_z[i, j, k] = b[0, 2]
+                B[i, j, k] = magnitude(b[0])
 
     # Write output files
     np.savetxt(os.path.join(file_dir, "{}_x".format(file_name)), B_x.reshape((domain_pts, domain_pts ** 2)))
@@ -76,11 +76,11 @@ def generate_10cm_meshes():
     Generate 10cm radius meshes to replicate figure 2 from Gummersall et al. from 2013
     """
     radius = 0.1
-    I = [100.0, 1e3, 1e4]
-    # generate_polywell_fields(100.0, radius, loop_offset=1.25, domain_pts=250, loop_pts=200)
-    # generate_polywell_fields(1e3, radius, loop_offset=1.25, domain_pts=250, loop_pts=200)
-    # generate_polywell_fields(1e4, radius, loop_offset=1.25, domain_pts=250, loop_pts=200)
+    # generate_polywell_fields((100.0, radius, 1.25, 50, 20))
+    # generate_polywell_fields((1e3, radius, 1.25, 50, 20))
+    # generate_polywell_fields((1e4, radius, 1.25, 50, 20))
 
+    I = [100.0, 1e3, 1e4]
     pool = mp.Pool(processes=3)
     args = [(I[i], radius, 1.25, 100, 100, ) for i in range(3)]
     pool.map(generate_polywell_fields, args)

@@ -77,6 +77,8 @@ class CurrentLoop(object):
         """
         Calculate the B field at an arbitrary point from the loop
         """
+        assert isinstance(field_point, np.ndarray)
+
         permeability_constant = CurrentLoop.mu_0 / (4 * np.pi)
         d_arc_length = self.__radius * self.d_theta
         integral_constant = permeability_constant * d_arc_length * self.__I
@@ -133,16 +135,20 @@ class InterpolatedBField(object):
     This class reads in a pre-calculated B field from file, and linearly interpolated the points to get the overall
     field
     """
-    def __init__(self, data_file):
+    def __init__(self, data_file, dom_pts_idx=4, dom_size_idx=5):
         """"
         Read in fields
 
         :param data_file: file containing 3D data of the field to be generated
+        :dom_pts_idx: The name of the file must be split in such a way that the domain points can be determined by 
+                      getting the value from this index
+        :dom_size_idx: The name of the file must be split in such a way that the domain size can be determined by 
+                      getting the value from this index
         """
         split_name = data_file.split("_")
 
-        dom_pts = int(split_name[4])
-        dom_size = float(split_name[5])
+        dom_pts = int(split_name[dom_pts_idx])
+        dom_size = float(split_name[dom_size_idx])
 
         b_points_x = np.loadtxt("{}_x".format(data_file)).reshape((dom_pts, dom_pts, dom_pts))
         b_points_y = np.loadtxt("{}_y".format(data_file)).reshape((dom_pts, dom_pts, dom_pts))
@@ -160,9 +166,9 @@ class InterpolatedBField(object):
         Return the field at location
         """
         B = np.zeros(field_point.shape)
-        B[0, 0] = self.b_interpolator_x(field_point)[0]
-        B[0, 1] = self.b_interpolator_y(field_point)[0]
-        B[0, 2] = self.b_interpolator_z(field_point)[0]
+        B[0, 0] = self.b_interpolator_x(field_point[0])
+        B[0, 1] = self.b_interpolator_y(field_point[0])
+        B[0, 2] = self.b_interpolator_z(field_point[0])
         return B
 
 

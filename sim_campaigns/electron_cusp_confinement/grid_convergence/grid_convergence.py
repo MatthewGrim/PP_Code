@@ -82,24 +82,36 @@ def run_sim(field, particle, dt_factor):
 
 if __name__ == '__main__':
     # Generate Polywell field
-    I = 1e4
-    radius = 0.15
-    loop_offset = 0.175
-    loop_pts = 200
-    comp_loops = list()
-    comp_loops.append(CurrentLoop(I, radius, np.asarray([-loop_offset, 0.0, 0.0]), np.asarray([1.0, 0.0, 0.0]), loop_pts))
-    comp_loops.append(CurrentLoop(I, radius, np.asarray([loop_offset, 0.0, 0.0]), np.asarray([-1.0, 0.0, 0.0]), loop_pts))
-    comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, -loop_offset, 0.0]), np.asarray([0.0, 1.0, 0.0]), loop_pts))
-    comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, loop_offset, 0.0]), np.asarray([0.0, -1.0, 0.0]), loop_pts))
-    comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, 0.0, -loop_offset]), np.asarray([0.0, 0.0, 1.0]), loop_pts))
-    comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, 0.0, loop_offset]), np.asarray([0.0, 0.0, -1.0]), loop_pts))
-    b_field = CombinedField(comp_loops)
+    use_interpolator = True
+    if use_interpolator:
+        loop_pts = 100
+        domain_pts = 100
+        I = 1e4
+        radius = 0.1
+        loop_offset = 1.25
+        dom_size = 1.1 * loop_offset * radius
+        file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * 1e-3, radius, loop_offset, domain_pts, loop_pts, dom_size)
+        file_path = os.path.join("..", "mesh_generation", "{}".format(I), file_name)
+        b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
+    else:
+        I = 1e4
+        radius = 0.15
+        loop_offset = 0.175
+        loop_pts = 200
+        comp_loops = list()
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([-loop_offset, 0.0, 0.0]), np.asarray([1.0, 0.0, 0.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([loop_offset, 0.0, 0.0]), np.asarray([-1.0, 0.0, 0.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, -loop_offset, 0.0]), np.asarray([0.0, 1.0, 0.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, loop_offset, 0.0]), np.asarray([0.0, -1.0, 0.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, 0.0, -loop_offset]), np.asarray([0.0, 0.0, 1.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, 0.0, loop_offset]), np.asarray([0.0, 0.0, -1.0]), loop_pts))
+        b_field = CombinedField(comp_loops)
 
     t_results = []
     x_results = []
     y_results = []
     z_results = []
-    dt_factors = [1.0, 0.1]
+    dt_factors = [1000.0, 100.0, 10.0, 1.0]
     for dt in dt_factors:
         seed = 1
         np.random.seed(seed)
