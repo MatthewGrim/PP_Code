@@ -27,11 +27,12 @@ def generate_polywell_fields(params):
     I, radius, loop_offset, domain_pts, loop_pts = params
     assert loop_offset >= 1.0
 
+    convert_to_kA = 1e-3
     dom_size = 1.1 * loop_offset * radius
-    file_dir = os.path.join("{}".format(radius), "{}".format(I))
+    file_dir = os.path.join("radius-{}m".format(radius), "current-{}kA".format(I * convert_to_kA), "domres-{}".format(domain_pts))
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
-    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * 1e-3, radius, loop_offset, domain_pts, loop_pts, dom_size)
+    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * convert_to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
     print("Starting mesh {}".format(file_name))
 
     # Generate Polywell field
@@ -68,21 +69,25 @@ def generate_polywell_fields(params):
     np.savetxt(os.path.join(file_dir, "{}_y".format(file_name)), B_y.reshape((domain_pts, domain_pts ** 2)))
     np.savetxt(os.path.join(file_dir, "{}_z".format(file_name)), B_z.reshape((domain_pts, domain_pts ** 2)))
     np.savetxt(os.path.join(file_dir, file_name), B.reshape((domain_pts, domain_pts ** 2)))
-    write_vti_file(B, file_name)
+    write_vti_file(B, os.path.join(file_dir, file_name))
 
 
 def generate_10cm_meshes():
     """
     Generate 10cm radius meshes to replicate figure 2 from Gummersall et al. from 2013
     """
-    radius = 0.1
+    # radius = 0.1
     # generate_polywell_fields((100.0, radius, 1.25, 50, 20))
     # generate_polywell_fields((1e3, radius, 1.25, 50, 20))
     # generate_polywell_fields((1e4, radius, 1.25, 50, 20))
 
+    radii = [0.1, 1.0]
     I = [100.0, 1e3, 1e4]
     pool = mp.Pool(processes=3)
-    args = [(I[i], radius, 1.25, 100, 100, ) for i in range(3)]
+    args = []
+    for current in I:
+        for radius in radii:
+            args.append((current, radius, 1.25, 130, 200, )) 
     pool.map(generate_polywell_fields, args)
     pool.close()
     pool.join()
