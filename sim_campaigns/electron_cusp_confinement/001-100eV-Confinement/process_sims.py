@@ -15,8 +15,9 @@ import scipy
 def process_results(I, seed):
     plt.figure()
 
+    radius = 0.1
     for current in I:
-	    output_path = os.path.join("results_archive/001-origin_centred/results/", "final_positions-current-{}-seed-{}.txt".format(current, seed))
+	    output_path = os.path.join("results", "final_positions-current-{}-radius-{}-seed-{}.txt".format(current, radius, seed))
 	    results = np.loadtxt(output_path)
 
 	    results = results[results[:, 0].argsort()]
