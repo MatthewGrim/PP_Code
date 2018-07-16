@@ -1,3 +1,5 @@
 study-001 - Playing around with high resolutions ... turns out not so high
 001 - High Res Gummersall comparison using 1e-9 * radius as dt step [1.0, 0.1], using combined field without interpolator
 002 - High Res Gummersall comparison [1000.0, 100.0, 10.0, 1.0], using combined field without interpolator
+003-10kA - High Res study at 10kA and 1e4 velocity
+004-100A - High Res study at 100A and 1e4 velocity

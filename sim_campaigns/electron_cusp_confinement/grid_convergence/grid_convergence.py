@@ -34,7 +34,6 @@ def run_sim(field, particle, dt_factor):
     dt *= dt_factor
 
     num_steps = int(final_time / dt)
-    print(dt, final_time, num_steps)
     times = np.linspace(0.0, final_time, num_steps)
     positions = np.zeros((times.shape[0], X.shape[0], X.shape[1]))
     velocities = np.zeros((times.shape[0], X.shape[0], X.shape[1]))
@@ -50,7 +49,7 @@ def run_sim(field, particle, dt_factor):
         try:
             x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
         except ValueError:
-            print("PARTICLE ESCAPED!")
+            print("PARTICLE ESCAPED! - {}, {}".format(times[i], X[0]))
             break
 
         positions[i, :, :] = x
@@ -84,7 +83,7 @@ if __name__ == '__main__':
     # Generate Polywell field
     use_interpolator = True
     if use_interpolator:
-        to_kA = 1-3
+        to_kA = 1e-3
         loop_pts = 200
         domain_pts = 130
         I = 1e4
@@ -112,12 +111,12 @@ if __name__ == '__main__':
     x_results = []
     y_results = []
     z_results = []
-    dt_factors = [1000.0, 100.0, 10.0, 1.0]
+    dt_factors = [100.0, 10.0, 1.0]
     for dt in dt_factors:
         seed = 1
         np.random.seed(seed)
         # Define charge particle
-        max_vel = 1e4
+        max_vel = 1e6
         vel = np.random.uniform(low=-1.0, high=1.0, size=(3, )) * max_vel
         particle = PICParticle(9.1e-31, 1.6e-19, np.asarray([0.0, 0.0, 0.0]), vel)
 
@@ -148,7 +147,7 @@ if __name__ == '__main__':
     ax[2].legend()
     ax[3].legend()
 
-    plt.savefig("grid_Convergence_Overall_{}_{}_{}.png".format(max_vel, I, radius))
+    plt.savefig("grid_convergence_Overall_{}_{}_{}.png".format(max_vel, I, radius))
     plt.show()
 
     results = np.concatenate((t_results[-1], x_results[-1], y_results[-1], z_results[-1]))
