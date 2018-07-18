@@ -105,15 +105,18 @@ class CombinedField(object):
     This class is used to combine the fields from multiple smaller component fields. The fields are simply superposed
     to get the overall field.
     """
-    def __init__(self, component_fields):
+    def __init__(self, component_fields, domain_size=None):
         """
         Component fields
 
         :param component_fields: list of the component fields in the system
+        :param domain_size: The domain size assumed to be square with each dimension between (-domain_size, domain_size)
         """
         assert isinstance(component_fields, list)
+        assert domain_size is None or isinstance(domain_size, float)
 
         self.component_fields = component_fields
+        self.domain_size = domain_size 
 
     def b_field(self, field_point):
         """
@@ -122,6 +125,10 @@ class CombinedField(object):
         :param field_point: point at which the field is evaluated
         :return:
         """
+        if self.domain_size is not None: 
+            if np.any(field_point < -self.domain_size) or np.any(field_point > self.domain_size):
+                raise ValueError("Field point is outside simulations domain")
+
         b_tot = np.zeros(field_point.shape)
         for comp in self.component_fields:
             b_comp = comp.b_field(field_point[0])

@@ -13,20 +13,23 @@ import scipy
 
 
 def process_results(I, seed):
-    plt.figure()
+    plt.figure(figsize=(20, 10))
 
     radius = 0.1
+    output_dirs = ["results"]
+    for output_dir in output_dirs:
+	    for current in I:
+		    output_path = os.path.join(output_dir, "final_positions-current-{}-radius-{}-seed-{}.txt".format(current, radius, seed))
+		    results = np.loadtxt(output_path)
+
+		    results = results[results[:, 0].argsort()]
+		    fraction_in_polywell = np.linspace(1.0, 0.0, results.shape[0])
+		    
+		    plt.semilogx(results[:, 0], fraction_in_polywell, label="current-{}-{}".format(current, output_dir))
+
+    # Get data from Gummersall plots - digitised from thesis
     for current in I:
-	    output_path = os.path.join("results", "final_positions-current-{}-radius-{}-seed-{}.txt".format(current, radius, seed))
-	    results = np.loadtxt(output_path)
-
-	    results = results[results[:, 0].argsort()]
-	    fraction_in_polywell = np.linspace(1.0, 0.0, results.shape[0])
-	    
-	    plt.semilogx(results[:, 0], fraction_in_polywell, label="current-{}".format(current))
-
-	    # Get data from Gummersall plots - digitised from thesis
-	    gummersall_results = np.loadtxt(os.path.join("data", "gummersall-current-{}-energy-100.txt".format(int(current))), delimiter=",")
+	    gummersall_results = np.loadtxt(os.path.join("data", "gummersall-current-{}-energy-100-redone.txt".format(int(current))), delimiter=",")
 	    plt.scatter(gummersall_results[:, 0], gummersall_results[:, 1], label="gummersall-{}".format(current))
 
     plt.xlim([1e-8, 1e-5])

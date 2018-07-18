@@ -55,7 +55,7 @@ def run_sim(params):
             x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
         except ValueError:
             if print_output:
-                print("PARTICLE ESCAPED! - {}, {}".format(times[i], X[0]))
+                print("PARTICLE ESCAPED! - {}, {}, {}".format(i, times[i], X[0]))
 
             x = positions[:, :, 0].flatten()
             y = positions[:, :, 1].flatten()
@@ -78,26 +78,36 @@ def run_sim(params):
 
 def run_parallel_sims(params):
     I, radius = params
+    use_interpolation = True
 
-    # Generate Polywell field
-    to_kA = 1e-3
-    loop_pts = 200
-    domain_pts = 130
-    loop_offset = 1.25
-    dom_size = 1.1 * loop_offset * radius
-    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
-    file_path = os.path.join("..", "mesh_generation", "radius-{}m".format(radius), "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
     print("Starting process: {}".format(file_name))
-    b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
-
-    t_escape = []
-    final_positions = []
+    
+    # Generate Polywell field
+    if use_interpolation:
+        to_kA = 1e-3
+        loop_pts = 200
+        domain_pts = 130
+        loop_offset = 1.25
+        dom_size = 1.1 * loop_offset * radius
+        file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
+        file_path = os.path.join("..", "mesh_generation", "radius-{}m".format(radius), "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
+        b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
+    else:
+        comp_loops = list()
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([-loop_offset * radius, 0.0, 0.0]), np.asarray([1.0, 0.0, 0.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([loop_offset * radius, 0.0, 0.0]), np.asarray([-1.0, 0.0, 0.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, -loop_offset * radius, 0.0]), np.asarray([0.0, 1.0, 0.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, loop_offset * radius, 0.0]), np.asarray([0.0, -1.0, 0.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, 0.0, -loop_offset * radius]), np.asarray([0.0, 0.0, 1.0]), loop_pts))
+        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, 0.0, loop_offset * radius]), np.asarray([0.0, 0.0, -1.0]), loop_pts))
+        b_field = CombinedField(comp_loops, domain_size=dom_size)
 
     seed = 1
     np.random.seed(seed)
 
     # Run simulations
     num_sims = 420
+    final_positions = []
     for i in range(num_sims):
         # Define 100eV charge particle
         vel = np.sqrt(2.0 * 100.0 * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
@@ -120,9 +130,12 @@ def run_parallel_sims(params):
     output_path = os.path.join("results", "final_positions-current-{}-radius-{}-seed-{}.txt".format(I, radius, seed))
     np.savetxt(output_path, np.asarray(final_positions))
 
+    print("Finished process: {}".format(file_name))
+    
+
 
 if __name__ == '__main__':
-    radii = [0.1, 1.0]
+    radii = [0.1]
     I = [100.0, 1e3, 1e4]
     pool = mp.Pool(processes=3)
     args = []
