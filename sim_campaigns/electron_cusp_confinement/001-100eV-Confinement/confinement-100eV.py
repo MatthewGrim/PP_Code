@@ -80,7 +80,7 @@ def run_parallel_sims(params):
     I, radius = params
     use_interpolation = True
 
-    print("Starting process: {}".format(file_name))
+    print("Starting process: current-{}kA-radius-{}m".format(I, radius))
     
     # Generate Polywell field
     if use_interpolation:
@@ -108,13 +108,13 @@ def run_parallel_sims(params):
     # Run simulations
     num_sims = 420
     final_positions = []
+    vel = np.sqrt(2.0 * 100.0 * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
     for i in range(num_sims):
-        # Define 100eV charge particle
-        vel = np.sqrt(2.0 * 100.0 * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
-        x_theta = np.random.uniform(0.0, 2 * np.pi)
-        y_theta = np.random.uniform(0.0, 2 * np.pi)
-        z_theta = np.random.uniform(0.0, 2 * np.pi)
-        velocity = rotate_3d(np.asarray([vel, 0.0, 0.0]), np.asarray([x_theta, y_theta, z_theta]))
+        # Define particle velocity and 100eV charge particle
+        z_unit = np.random.uniform(-1.0, 1.0)
+        xy_plane = np.sqrt(1 - z_unit ** 2)
+        phi = np.random.uniform(0.0, 2 * np.pi)
+        velocity = np.asarray([xy_plane * np.cos(phi), xy_plane * np.sin(phi), z_unit]) * vel
         particle = PICParticle(9.1e-31, 1.6e-19, np.random.uniform(-3.0 * radius / 16.0, 3.0 * radius / 16.0, size=(3, )), velocity)
 
         t, x, y, z, final_idx = run_sim((b_field, particle, radius))
@@ -131,7 +131,6 @@ def run_parallel_sims(params):
     np.savetxt(output_path, np.asarray(final_positions))
 
     print("Finished process: {}".format(file_name))
-    
 
 
 if __name__ == '__main__':
