@@ -3,6 +3,7 @@ venv_pp/*
 __pycache__/
 node_modules
 
+**/data/*
 **/mesh_data/*
 **/results/*
 
