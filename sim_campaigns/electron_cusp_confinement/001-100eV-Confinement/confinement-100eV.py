@@ -21,7 +21,7 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
 def run_sim(params):
-    b_field, particle, radius = params
+    b_field, particle, radius, domain_size = params
     print_output = False
 
     # There is no E field in the simulations
@@ -51,9 +51,9 @@ def run_sim(params):
 
         dt = times[i] - times[i - 1]
 
-        try:
-            x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
-        except ValueError:
+        x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
+
+        if np.any(x[0, :] < domain_size) or np.any(x[0, :] > domain_size):
             if print_output:
                 print("PARTICLE ESCAPED! - {}, {}, {}".format(i, times[i], X[0]))
 
@@ -117,7 +117,7 @@ def run_parallel_sims(params):
         velocity = rotate_3d(np.asarray([vel, 0.0, 0.0]), np.asarray([x_theta, y_theta, z_theta]))
         particle = PICParticle(9.1e-31, 1.6e-19, np.random.uniform(-3.0 * radius / 16.0, 3.0 * radius / 16.0, size=(3, )), velocity)
 
-        t, x, y, z, final_idx = run_sim((b_field, particle, radius))
+        t, x, y, z, final_idx = run_sim((b_field, particle, radius, loop_offset * radius))
 
         # Add results to list
         escaped = False if final_idx is None else True
