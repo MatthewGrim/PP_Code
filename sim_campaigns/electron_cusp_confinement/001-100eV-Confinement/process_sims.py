@@ -28,8 +28,8 @@ def process_fig2_results(I, seed):
             plt.semilogx(results[:, 0], fraction_in_polywell, label="current-{}-{}".format(current, output_dir))
 
     # Get data from Gummersall plots - digitised from thesis
-    for current in I:
-        gummersall_results = np.loadtxt(os.path.join("data", "gummersall-current-{}-energy-100-redone.txt".format(int(current))), delimiter=",")
+    for current in [100.0, 1000.0, 1e4, 1e5]:
+        gummersall_results = np.loadtxt(os.path.join("data", "gummersall-current-{}-energy-100.txt".format(int(current))), delimiter=",")
         plt.scatter(gummersall_results[:, 0], gummersall_results[:, 1], label="gummersall-{}".format(current))
 
     plt.xlim([1e-8, 1e-5])

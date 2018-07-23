@@ -55,7 +55,7 @@ def run_sim(params):
 
         x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
 
-        if np.any(x[0, :] < domain_size) or np.any(x[0, :] > domain_size):
+        if np.any(x[0, :] < -domain_size) or np.any(x[0, :] > domain_size):
             if print_output:
                 print("PARTICLE ESCAPED! - {}, {}, {}".format(i, times[i], X[0]))
 
@@ -135,8 +135,7 @@ def run_parallel_sims(params):
 
     print("Finished process: {}".format(file_name))
 
-
-if __name__ == '__main__':
+def replicate_fig2():
     radii = [0.1]
     I = [100.0, 1e3, 1e4]
     pool = mp.Pool(processes=3)
@@ -149,4 +148,20 @@ if __name__ == '__main__':
     pool.join()
 
     # run_parallel_sims((100.0, 0.1))
+
+def replicate_fig5():
+    radii = [1.0]
+    I = [100.0, 200.0, 500.0, 1e3, 2e3, 5e3, 1e4, 2e4]
+    pool = mp.Pool(processes=4)
+    args = []
+    for current in I:
+        for radius in radii:
+            args.append((current, radius))
+    pool.map(run_parallel_sims, args)
+    pool.close()
+    pool.join()
+
+
+if __name__ == '__main__':
+    replicate_fig5()
 
