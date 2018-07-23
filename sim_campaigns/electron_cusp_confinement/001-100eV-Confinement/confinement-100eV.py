@@ -21,12 +21,14 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
 def run_sim(params):
-    b_field, particle, radius = params
+    b_field, particle, radius, I, dI_dt = params
     print_output = False
 
     # There is no E field in the simulations
     def e_field(x):
-        return np.zeros(x.shape) 
+        B = b_field.b_field(x)
+        dB_dt = B / I * dI_dt
+        return -dB_dt
 
     X = particle.position
     V = particle.velocity
@@ -79,6 +81,7 @@ def run_sim(params):
 def run_parallel_sims(params):
     I, radius = params
     use_interpolation = True
+    dI_dt = 0.0
 
     print("Starting process: current-{}kA-radius-{}m".format(I, radius))
     
@@ -117,7 +120,7 @@ def run_parallel_sims(params):
         velocity = np.asarray([xy_plane * np.cos(phi), xy_plane * np.sin(phi), z_unit]) * vel
         particle = PICParticle(9.1e-31, 1.6e-19, np.random.uniform(-3.0 * radius / 16.0, 3.0 * radius / 16.0, size=(3, )), velocity)
 
-        t, x, y, z, final_idx = run_sim((b_field, particle, radius))
+        t, x, y, z, final_idx = run_sim((b_field, particle, radius, I, dI_dt))
 
         # Add results to list
         escaped = False if final_idx is None else True
@@ -134,7 +137,7 @@ def run_parallel_sims(params):
 
 
 if __name__ == '__main__':
-    radii = [0.1]
+    radii = [1.0]
     I = [100.0, 1e3, 1e4]
     pool = mp.Pool(processes=3)
     args = []
