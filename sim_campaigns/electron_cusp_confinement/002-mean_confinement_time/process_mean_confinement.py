@@ -39,5 +39,5 @@ def process_fig5_results(electron_energies):
 
 
 if __name__ == '__main__':
-	process_fig5_results([10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1e4, 2e4])
+	process_fig5_results([10.0, 20.0, 50.0, 100.0, 200.0, 500.0])
 

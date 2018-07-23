@@ -139,7 +139,7 @@ def run_parallel_sims(params):
 
 
 if __name__ == '__main__':
-    electron_energies = [10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1e4, 2e4]
+    electron_energies = [10.0, 20.0, 50.0, 100.0, 200.0, 500.0]
     pool = mp.Pool(processes=4)
     args = []
     for e_eV in electron_energies:
