@@ -29,7 +29,7 @@ def generate_polywell_fields(params):
 
     convert_to_kA = 1e-3
     dom_size = 1.1 * loop_offset * radius
-    file_dir = os.path.join("radius-{}m".format(radius), "current-{}kA".format(I * convert_to_kA), "domres-{}".format(domain_pts))
+    file_dir = os.path.join("data", "radius-{}m".format(radius), "current-{}kA".format(I * convert_to_kA), "domres-{}".format(domain_pts))
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * convert_to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
@@ -72,7 +72,7 @@ def generate_polywell_fields(params):
     write_vti_file(B, os.path.join(file_dir, file_name))
 
 
-def generate_10cm_meshes():
+def generate_meshes():
     """
     Generate 10cm radius meshes to replicate figure 2 from Gummersall et al. from 2013
     """
@@ -82,8 +82,8 @@ def generate_10cm_meshes():
     # generate_polywell_fields((1e4, radius, 1.25, 50, 20))
 
     radii = [0.1, 1.0]
-    I = [100.0, 1e3, 1e4]
-    pool = mp.Pool(processes=3)
+    I = [1e5]
+    pool = mp.Pool(processes=2)
     args = []
     for current in I:
         for radius in radii:
@@ -94,4 +94,4 @@ def generate_10cm_meshes():
 
 
 if __name__ == "__main__":
-    generate_10cm_meshes()
+    generate_meshes()
