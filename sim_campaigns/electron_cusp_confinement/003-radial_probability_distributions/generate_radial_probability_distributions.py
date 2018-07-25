@@ -80,44 +80,33 @@ def run_sim(params):
 
 
 def run_parallel_sims(params):
-    electron_energy, batch_num = params
-    use_interpolation = True
+    electron_energy, I, batch_num = params
     dI_dt = 0.0
+    to_kA = 1e-3
 
-    print("Starting process: electron_energy-{}eV-batch-{}".format(electron_energy, batch_num))
+    process_name = "electron_energy-{}eV-current-{}kA-batch-{}".format(electron_energy, I * to_kA, batch_num)
+    print("Starting process: {}".format(process_name))
     
     # Generate Polywell field
-    if use_interpolation:
-    	I = 1e5
-    	radius = 1.0
-        to_kA = 1e-3
-        loop_pts = 200
-        domain_pts = 130
-        loop_offset = 1.25
-        dom_size = 1.1 * loop_offset * radius
-        file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
-        file_path = os.path.join("..", "mesh_generation", "data", "radius-{}m".format(radius), "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
-        b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
-    else:
-        comp_loops = list()
-        comp_loops.append(CurrentLoop(I, radius, np.asarray([-loop_offset * radius, 0.0, 0.0]), np.asarray([1.0, 0.0, 0.0]), loop_pts))
-        comp_loops.append(CurrentLoop(I, radius, np.asarray([loop_offset * radius, 0.0, 0.0]), np.asarray([-1.0, 0.0, 0.0]), loop_pts))
-        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, -loop_offset * radius, 0.0]), np.asarray([0.0, 1.0, 0.0]), loop_pts))
-        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, loop_offset * radius, 0.0]), np.asarray([0.0, -1.0, 0.0]), loop_pts))
-        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, 0.0, -loop_offset * radius]), np.asarray([0.0, 0.0, 1.0]), loop_pts))
-        comp_loops.append(CurrentLoop(I, radius, np.asarray([0.0, 0.0, loop_offset * radius]), np.asarray([0.0, 0.0, -1.0]), loop_pts))
-        b_field = CombinedField(comp_loops, domain_size=dom_size)
+    radius = 1.0
+    loop_pts = 200
+    domain_pts = 130
+    loop_offset = 1.25
+    dom_size = 1.1 * loop_offset * radius
+    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
+    file_path = os.path.join("..", "mesh_generation", "data", "radius-{}m".format(radius), "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
+    b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
 
     seed = batch_num
     np.random.seed(seed)
 
     # Run simulations
-    num_bins = 50
+    num_bins = 100
     particle_distribution_count = np.zeros((num_bins, ))
-    radial_bins = np.linspace(0.0, radius, num_bins)
-    num_sims = 420
+    radial_bins = np.linspace(0.0, np.sqrt(3) * loop_offset * radius, num_bins)
+    num_sims = 200
     final_positions = []
-    vel = np.sqrt(2.0 * 100.0 * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
+    vel = np.sqrt(2.0 * electron_energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
     for i in range(num_sims):
         # Define particle velocity and 100eV charge particle
         z_unit = np.random.uniform(-1.0, 1.0)
@@ -133,32 +122,51 @@ def run_parallel_sims(params):
         final_idx = final_idx if escaped else -1
 
         # Get probability of electron in 50 radial spacings in sim
-        radial_position = np.sqrt(x ** 2 + y ** 2 + z ** 2)
-        for i, r in radial_bins:
-        	if i == 0.0:
-        		continue
+        radial_position = np.sqrt(x[:final_idx] ** 2 + y[:final_idx] ** 2 + z[:final_idx] ** 2)
+        for i, r in enumerate(radial_bins):
+            if i == 0.0:
+                continue
 
-    		points_in_range = np.where(np.logical_and(radial_position >= radial_bins[i - 1], a <= r)) 
-    		particle_distribution_count[i - 1] += points_in_range.shape[0]
-
+            points_in_range = np.where(np.logical_and(radial_position >= radial_bins[i - 1], radial_position <= r)) 
+            particle_distribution_count[i - 1] += points_in_range[0].shape[0]
+        
     # Save to file
     if not os.path.exists("results"):
         os.makedirs("results")
-    output_path = os.path.join("results", "radial_distribution-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, energy, batch_num))
-    np.savetxt(output_path, np.stack(radial_bins, particle_distribution_count))
+    output_dir = os.path.join("results", "radius-{}m".format(radius))
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    output_dir = os.path.join(output_dir, "current-{}kA".format(I * to_kA))
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    print("Finished process: {}".format(file_name))
+    output_path = os.path.join(output_dir, "radial_distribution-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, electron_energy, batch_num))
+    np.savetxt(output_path, np.stack((radial_bins, particle_distribution_count)))
+
+    print("Finished process: {}".format(process_name))
 
 
 def get_radial_distributions():
-    electron_energies = [0.1, 1.0, 10.0, 100.0]
-    batch_numbers = [1, 2]
+    electron_energies = [0.1, 1.0, 10.0, 100.0, 1000.0, 1e4]
+    I = [100.0, 200.0, 500.0, 1e3, 5e3, 2e4, 1e5]
     pool = mp.Pool(processes=4)
     args = []
-    for electron_energy in electron_energies:
-            args.append((electron_energy, batch_num))
+    for current in I:
+        for electron_energy in electron_energies:
+            if electron_energy <= 10.0:
+                batch_numbers = 2
+            elif electron_energy <= 100.0:
+                batch_numbers = 4
+            else:
+                batch_numbers = 8
+
+            for batch_num in range(batch_numbers): 
+                args.append((electron_energy, current, batch_num + 1))
     pool.map(run_parallel_sims, args)
     pool.close()
     pool.join()
 
-    run_parallel_sims((100.0, 0.1))
+
+if __name__ == '__main__':
+    get_radial_distributions()
+
