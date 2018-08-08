@@ -16,6 +16,7 @@ def process_radial_locations(energies, radii, currents, plot_histograms=False):
     for output_dir in output_dirs:
         for radius in radii:
             normalised_average_radii = np.zeros((len(currents), len(energies)))
+            normalised_std_radii = np.zeros((len(currents), len(energies)))
             for k, I in enumerate(currents):
                 if plot_histograms:
                     plt.figure(figsize=(20, 10))
@@ -39,13 +40,16 @@ def process_radial_locations(energies, radii, currents, plot_histograms=False):
 
                     # Get radial probabilities and plot histograms
                     samples = np.sum(radial_numbers)
-                    radial_probabilities = radial_numbers / np.sum(radial_numbers)
+                    radial_probabilities = radial_numbers / samples
                     if plot_histograms:
                         plt.plot(total_results[0][0, :], radial_probabilities, label="energy-{}-samples-{}".format(energy, samples * 1e-6))
 
                     # Get average radial location
-                    normalised_average_radius = np.sum(total_results[0][0, :] * radial_numbers) / (samples * radius)
+                    normalised_radii = total_results[0][0, :] / radius
+                    normalised_average_radius = np.sum(normalised_radii * radial_probabilities)
+                    normalised_std_radius = np.sum(normalised_radii ** 2 * radial_probabilities) - normalised_average_radius ** 2
                     normalised_average_radii[k, j] = normalised_average_radius
+                    normalised_std_radii[k, j] = normalised_std_radius
 
                 if plot_histograms:
                     plt.title("Radial position of different energy levels for {}m device operating at {}kA".format(radius, I * 1e-3))
@@ -58,7 +62,9 @@ def process_radial_locations(energies, radii, currents, plot_histograms=False):
             # Plot average radial distributions
             plt.figure()
             for j, energy in enumerate(energies):
-                plt.semilogx(currents, normalised_average_radii[:, j], label="energy-{}-radius-{}".format(energy, radius))
+                plt.errorbar(currents, normalised_average_radii[:, j], yerr=normalised_std_radii[:, j],
+                             label="energy-{}-radius-{}".format(energy, radius))
+            plt.xscale('log')
             plt.xlabel("Currents [kA]")
             plt.ylabel("Normalised average radius")
             plt.title("Average radial locations for {}m device".format(radius))
