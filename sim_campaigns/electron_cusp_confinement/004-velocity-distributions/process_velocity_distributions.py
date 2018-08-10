@@ -47,12 +47,8 @@ def process_radial_locations(energies, radii, currents, plot_histograms=False):
 
                             # Load velocity distributions
                             if velocity_name in file:
-                                velocity_bins = new_results[0, :] if velocity_bins is None else velocity_bins
-
-                                if velocity_numbers is None:
-                                    velocity_numbers = np.zeros(new_results[1:, :].shape)
-
-                                velocity_numbers += new_results[1:, :]
+                                velocity_bins = new_results if velocity_bins is None else velocity_bins
+                                velocity_numbers += new_results
 
                             # Load final state
                             if state_name in file:
