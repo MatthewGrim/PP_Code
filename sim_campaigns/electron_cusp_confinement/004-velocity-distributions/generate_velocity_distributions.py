@@ -118,8 +118,8 @@ def run_parallel_sims(params):
     # Run simulations
     num_radial_bins = 100
     num_velocity_bins = 1000
-    particle_position_count = np.zeros((num_radial_bins,))
-    particle_velocity_count = np.zeros((3, num_velocity_bins))
+    total_particle_position_count = np.zeros((num_radial_bins,))
+    total_particle_velocity_count = np.zeros((3, num_radial_bins, num_velocity_bins))
     radial_bins = np.linspace(0.0, np.sqrt(3) * loop_offset * radius, num_radial_bins)
     vel = np.sqrt(2.0 * electron_energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
     velocity_bins = np.linspace(0.0, vel, num_velocity_bins)
@@ -145,40 +145,56 @@ def run_parallel_sims(params):
 
         # Get probability of electron in radial spacings in sim
         radial_position = np.sqrt(x[:final_idx] ** 2 + y[:final_idx] ** 2 + z[:final_idx] ** 2)
-        particle_position_count += get_particle_count(radial_bins, radial_position)
-        particle_velocity_count[0, :] += get_particle_count(velocity_bins, v_x)
-        particle_velocity_count[1, :] += get_particle_count(velocity_bins, v_y)
-        particle_velocity_count[2, :] += get_particle_count(velocity_bins, v_z)
+        particle_position_count, particle_velocity_count = get_particle_count(radial_bins, velocity_bins, radial_position, v_x, v_y, v_z)
+        total_particle_position_count += particle_position_count
+        total_particle_velocity_count += particle_velocity_count
 
     # Save results to file
     position_output_path = os.path.join(output_dir, "radial_distribution-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, electron_energy, batch_num))
     velocity_output_path = os.path.join(output_dir, "velocity_distribution-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, electron_energy, batch_num))
     final_state_output_path = os.path.join(output_dir, "final_state-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, electron_energy, batch_num))
-    np.savetxt(position_output_path, np.stack((radial_bins, particle_position_count)))
-    np.savetxt(velocity_output_path, np.vstack((velocity_bins, particle_velocity_count)))
+    np.savetxt(position_output_path, np.stack((radial_bins, total_particle_position_count)))
+    np.savetxt(velocity_output_path, total_particle_velocity_count, fmt="%s")
     np.savetxt(final_state_output_path,  np.asarray(final_positions))
 
     print("Finished process: {}".format(process_name))
 
 
-def get_particle_count(bins, values):
-    count = np.zeros(bins.shape)
-    for i, bin_max in enumerate(bins):
+def get_particle_count(radial_bins, velocity_bins, radial_positions, v_x, v_y, v_z):
+    position_count = np.zeros(radial_bins.shape)
+    velocity_count = np.zeros((3, radial_bins.shape[0], velocity_bins.shape[0]))
+    for i, bin_max in enumerate(radial_bins):
         if i == 0.0:
             continue
 
-        bin_min = bins[i - 1]
-        points_in_range = np.where(np.logical_and(values >= bin_min, values < bin_max))
-        count[i - 1] = points_in_range[0].shape[0]
+        bin_min = radial_bins[i - 1]
+        points_in_range = np.where(np.logical_and(radial_positions >= bin_min, radial_positions < bin_max))
+        position_count[i - 1] = points_in_range[0].shape[0]
 
-    return count
+        x_values = v_x[points_in_range]
+        y_values = v_y[points_in_range]
+        z_values = v_z[points_in_range]
+        for j, v_bin_max in enumerate(velocity_bins):
+            if j == 0.0:
+                continue
+
+            v_bin_min = velocity_bins[j - 1]
+            x_points_in_range = np.where(np.logical_and(x_values >= v_bin_min, x_values < v_bin_max))
+            y_points_in_range = np.where(np.logical_and(y_values >= v_bin_min, y_values < v_bin_max))
+            z_points_in_range = np.where(np.logical_and(z_values >= v_bin_min, z_values < v_bin_max))
+
+            velocity_count[0, i, j] = x_points_in_range[0].shape[0]
+            velocity_count[1, i, j] = y_points_in_range[0].shape[0]
+            velocity_count[2, i, j] = z_points_in_range[0].shape[0]
+
+    return position_count, velocity_count
 
 
 def get_radial_distributions():
     radii = [1.0]
-    electron_energies = [1.0, 10.0, 100.0, 1000.0, 1e4]
+    electron_energies = [1000.0]
     I = [1e4]
-    pool = mp.Pool(processes=6)
+    pool = mp.Pool(processes=1)
     args = []
     for radius in radii:
         for current in I:
@@ -188,7 +204,7 @@ def get_radial_distributions():
                 elif electron_energy <= 100.0:
                     batch_numbers = 4
                 else:
-                    batch_numbers = 8
+                    batch_numbers = 1
 
                 for batch_num in range(batch_numbers):
                     args.append((radius, electron_energy, current, batch_num + 1))
