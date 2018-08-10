@@ -121,9 +121,9 @@ def run_parallel_sims(params):
     particle_position_count = np.zeros((num_radial_bins,))
     particle_velocity_count = np.zeros((3, num_velocity_bins))
     radial_bins = np.linspace(0.0, np.sqrt(3) * loop_offset * radius, num_radial_bins)
-    velocity_bins = np.linspace(0.0, 3e8, num_velocity_bins)
-    num_sims = 10
     vel = np.sqrt(2.0 * electron_energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
+    velocity_bins = np.linspace(0.0, vel, num_velocity_bins)
+    num_sims = 10
     final_positions = []
     for i in range(num_sims):
         # Define particle velocity and 100eV charge particle
@@ -168,7 +168,7 @@ def get_particle_count(bins, values):
             continue
 
         bin_min = bins[i - 1]
-        points_in_range = np.where(np.logical_and(values >= bin_min, values <= bin_max))
+        points_in_range = np.where(np.logical_and(values >= bin_min, values < bin_max))
         count[i - 1] = points_in_range[0].shape[0]
 
     return count
@@ -178,7 +178,7 @@ def get_radial_distributions():
     radii = [1.0]
     electron_energies = [1.0, 10.0, 100.0, 1000.0, 1e4]
     I = [1e4]
-    pool = mp.Pool(processes=4)
+    pool = mp.Pool(processes=6)
     args = []
     for radius in radii:
         for current in I:
