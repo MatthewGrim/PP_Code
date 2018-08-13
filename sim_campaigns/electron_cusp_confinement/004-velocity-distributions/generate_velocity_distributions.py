@@ -87,6 +87,7 @@ def run_parallel_sims(params):
     radius, electron_energy, I, batch_num = params
     dI_dt = 0.0
     to_kA = 1e-3
+    use_cartesian_reference_frame = False
 
     # Get output directory
     if not os.path.exists("results"):
@@ -117,13 +118,15 @@ def run_parallel_sims(params):
 
     # Run simulations
     num_radial_bins = 100
-    num_velocity_bins = 1000
+    num_velocity_bins = 250
     total_particle_position_count = np.zeros((num_radial_bins,))
-    total_particle_velocity_count = np.zeros((3, num_radial_bins, num_velocity_bins))
+    total_particle_velocity_count_x = np.zeros((num_radial_bins, num_velocity_bins - 1))
+    total_particle_velocity_count_y = np.zeros((num_radial_bins, num_velocity_bins - 1))
+    total_particle_velocity_count_z = np.zeros((num_radial_bins, num_velocity_bins - 1))
     radial_bins = np.linspace(0.0, np.sqrt(3) * loop_offset * radius, num_radial_bins)
     vel = np.sqrt(2.0 * electron_energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
-    velocity_bins = np.linspace(0.0, vel, num_velocity_bins)
-    num_sims = 10
+    velocity_bins = np.linspace(-vel, vel, num_velocity_bins)
+    num_sims = 200
     final_positions = []
     for i in range(num_sims):
         # Define particle velocity and 100eV charge particle
@@ -143,18 +146,52 @@ def run_parallel_sims(params):
         # Save final position output
         final_positions.append([t[final_idx], x[final_idx], y[final_idx], z[final_idx], escaped])
 
-        # Get probability of electron in radial spacings in sim
+        # Change coordinate system
         radial_position = np.sqrt(x[:final_idx] ** 2 + y[:final_idx] ** 2 + z[:final_idx] ** 2)
-        particle_position_count, particle_velocity_count = get_particle_count(radial_bins, velocity_bins, radial_position, v_x, v_y, v_z)
+        if use_cartesian_reference_frame:
+            particle_position_count, particle_velocity_count = get_particle_count(radial_bins, velocity_bins, radial_position, v_x, v_y, v_z)
+        else:
+            r_unit = np.zeros((3, x[:final_idx].shape[0]))
+            r_unit[0, :] = x[:final_idx]
+            r_unit[1, :] = y[:final_idx]
+            r_unit[2, :] = z[:final_idx]
+            r_unit /= np.sqrt(x[:final_idx] ** 2 + y[:final_idx] ** 2 + z[:final_idx] ** 2)
+
+            xy_unit = np.zeros((3, x[:final_idx].shape[0]))
+            xy_unit[0, :] = x[:final_idx]
+            xy_unit[1, :] = y[:final_idx]
+            xy_unit /= np.sqrt(np.sum(xy_unit ** 2, axis=0))
+
+            latitude_unit = np.zeros(xy_unit.shape)
+            latitude_unit[0] = xy_unit[1, :]
+            latitude_unit[1] = -xy_unit[0, :]
+            latitude_unit[2] = 0.0
+
+            longitude_unit = np.zeros((3, x[:final_idx].shape[0]))
+            longitude_unit[0, :] = r_unit[1, :] * latitude_unit[2, :] - r_unit[2] * latitude_unit[1]
+            longitude_unit[1, :] = r_unit[2, :] * latitude_unit[0, :] - r_unit[0] * latitude_unit[2]
+            longitude_unit[2, :] = r_unit[0, :] * latitude_unit[1, :] - r_unit[1] * latitude_unit[0]
+
+            v_r = v_x[:final_idx] * r_unit[0, :] + v_y[:final_idx] * r_unit[1, :] + v_z[:final_idx] * r_unit[2, :]
+            v_lat = v_x[:final_idx] * latitude_unit[0, :] + v_y[:final_idx] * latitude_unit[1, :] + v_z[:final_idx] * latitude_unit[2, :]
+            v_long = v_x[:final_idx] * longitude_unit[0, :] + v_y[:final_idx] * longitude_unit[1, :] + v_z[:final_idx] * longitude_unit[2, :]
+
+            particle_position_count, particle_velocity_count = get_particle_count(radial_bins, velocity_bins, radial_position, v_r, v_lat, v_long)
+
+        # Get probability of electron in radial spacings in sim
         total_particle_position_count += particle_position_count
-        total_particle_velocity_count += particle_velocity_count
+        total_particle_velocity_count_x += particle_velocity_count[0, :, :]
+        total_particle_velocity_count_y += particle_velocity_count[1, :, :]
+        total_particle_velocity_count_z += particle_velocity_count[2, :, :]
 
     # Save results to file
     position_output_path = os.path.join(output_dir, "radial_distribution-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, electron_energy, batch_num))
-    velocity_output_path = os.path.join(output_dir, "velocity_distribution-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, electron_energy, batch_num))
+    velocity_output_path = os.path.join(output_dir, "velocity_distribution-current-{}-radius-{}-energy-{}-batch-{}".format(I, radius, electron_energy, batch_num))
     final_state_output_path = os.path.join(output_dir, "final_state-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, electron_energy, batch_num))
     np.savetxt(position_output_path, np.stack((radial_bins, total_particle_position_count)))
-    np.savetxt(velocity_output_path, total_particle_velocity_count, fmt="%s")
+    np.savetxt("{}_x.txt".format(velocity_output_path), total_particle_velocity_count_x)
+    np.savetxt("{}_y.txt".format(velocity_output_path), total_particle_velocity_count_y)
+    np.savetxt("{}_z.txt".format(velocity_output_path), total_particle_velocity_count_z)
     np.savetxt(final_state_output_path,  np.asarray(final_positions))
 
     print("Finished process: {}".format(process_name))
@@ -162,7 +199,7 @@ def run_parallel_sims(params):
 
 def get_particle_count(radial_bins, velocity_bins, radial_positions, v_x, v_y, v_z):
     position_count = np.zeros(radial_bins.shape)
-    velocity_count = np.zeros((3, radial_bins.shape[0], velocity_bins.shape[0]))
+    velocity_count = np.zeros((3, radial_bins.shape[0], velocity_bins.shape[0] - 1))
     for i, bin_max in enumerate(radial_bins):
         if i == 0.0:
             continue
@@ -183,18 +220,18 @@ def get_particle_count(radial_bins, velocity_bins, radial_positions, v_x, v_y, v
             y_points_in_range = np.where(np.logical_and(y_values >= v_bin_min, y_values < v_bin_max))
             z_points_in_range = np.where(np.logical_and(z_values >= v_bin_min, z_values < v_bin_max))
 
-            velocity_count[0, i, j] = x_points_in_range[0].shape[0]
-            velocity_count[1, i, j] = y_points_in_range[0].shape[0]
-            velocity_count[2, i, j] = z_points_in_range[0].shape[0]
+            velocity_count[0, i, j - 1] = x_points_in_range[0].shape[0]
+            velocity_count[1, i, j - 1] = y_points_in_range[0].shape[0]
+            velocity_count[2, i, j - 1] = z_points_in_range[0].shape[0]
 
     return position_count, velocity_count
 
 
 def get_radial_distributions():
     radii = [1.0]
-    electron_energies = [1000.0]
-    I = [1e4]
-    pool = mp.Pool(processes=1)
+    electron_energies = [1.0, 10.0, 100.0, 1000.0]
+    I = [1e5]
+    pool = mp.Pool(processes=6)
     args = []
     for radius in radii:
         for current in I:
@@ -211,6 +248,8 @@ def get_radial_distributions():
     pool.map(run_parallel_sims, args)
     pool.close()
     pool.join()
+
+    # run_parallel_sims((1.0, 1000.0, 1e4, 1))
 
 
 if __name__ == '__main__':

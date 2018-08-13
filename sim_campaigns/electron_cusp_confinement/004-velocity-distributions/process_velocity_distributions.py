@@ -8,21 +8,17 @@ This script is used to process results for velocity probability distributions
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from vtk.util.numpy_support import numpy_to_vtk
+
+from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
-def process_radial_locations(energies, radii, currents, plot_histograms=False):
+def process_radial_locations(energies, radii, currents):
     # Loop through simulations
     output_dirs = ["results"]
     for output_dir in output_dirs:
         for radius in radii:
-            normalised_average_radii = np.zeros((len(currents), len(energies)))
-            normalised_std_radii = np.zeros((len(currents), len(energies)))
-
             for k, I in enumerate(currents):
-                escaped_ratios = list()
-                if plot_histograms:
-                    fig, ax = plt.subplots(4, figsize=(20, 10))
-
                 for j, energy in enumerate(energies):
                     position_name = "radial_distribution-current-{}-radius-{}-energy-{}".format(I, radius, energy)
                     velocity_name = "velocity_distribution-current-{}-radius-{}-energy-{}".format(I, radius, energy)
@@ -34,94 +30,59 @@ def process_radial_locations(energies, radii, currents, plot_histograms=False):
                     radial_bins = None
                     radial_numbers = None
                     velocity_bins = None
-                    velocity_numbers = None
+                    v_x_numbers = None
+                    v_y_numbers = None
+                    v_z_numbers = None
                     final_state_results = np.zeros((2,))
                     for file in dir_files:
                         if os.path.isfile(os.path.join(data_dir, file)):
                             output_path = os.path.join(data_dir, file)
-                            new_results = np.loadtxt(output_path)
                             # Load radial positions
                             if position_name in file:
+                                new_results = np.loadtxt(output_path)
                                 radial_bins = new_results[0, :] if radial_bins is None else radial_bins
                                 radial_numbers = new_results[1, :] if radial_numbers is None else radial_numbers + new_results[1, :]
 
                             # Load velocity distributions
                             if velocity_name in file:
-                                velocity_bins = new_results if velocity_bins is None else velocity_bins
-                                velocity_numbers += new_results
+                                if "_x" in file:
+                                    v_x = np.loadtxt(output_path)
+                                    v_x_numbers = v_x if v_x_numbers is None else v_x + v_x_numbers
+
+                                    vel = np.sqrt(2.0 * energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
+                                    velocity_bins = np.linspace(-vel, vel, v_x.shape[1])
+                                if "_y" in file:
+                                    v_y = np.loadtxt(output_path)
+                                    v_y_numbers = v_y if v_y_numbers is None else v_y + v_y_numbers
+                                if "_z" in file:
+                                    v_z = np.loadtxt(output_path)
+                                    v_z_numbers = v_z if v_z_numbers is None else v_z + v_z_numbers
 
                             # Load final state
                             if state_name in file:
+                                new_results = np.loadtxt(output_path)
                                 final_state_results[0] += np.sum(new_results[:, 4])
                                 final_state_results[1] += new_results.shape[0]
 
-                    # Get radial probabilities and plot position histograms
-                    samples = np.sum(radial_numbers)
-                    radial_probabilities = radial_numbers / samples
-                    velocity_probabilities = velocity_numbers / np.sum(velocity_numbers)
-                    if plot_histograms:
-                        ax[0].plot(radial_bins, radial_probabilities, label="energy-{}-samples-{}".format(energy, samples * 1e-6))
-                        ax[1].plot(velocity_bins / velocity_bins[-1], velocity_probabilities[0, :], label="energy-{}-samples-{}".format(energy, samples * 1e-6))
-                        ax[2].plot(velocity_bins / velocity_bins[-1], velocity_probabilities[1, :], label="energy-{}-samples-{}".format(energy, samples * 1e-6))
-                        ax[3].plot(velocity_bins / velocity_bins[-1], velocity_probabilities[2, :], label="energy-{}-samples-{}".format(energy, samples * 1e-6))
+                    print(np.sum(v_x_numbers))
+                    print(np.sum(v_y_numbers))
+                    print(np.sum(v_z_numbers))
 
-                    # Get average radial location
-                    normalised_radii = radial_bins / radius
-                    normalised_average_radius = np.sum(normalised_radii * radial_probabilities)
-                    normalised_std_radius = np.sum(normalised_radii ** 2 * radial_probabilities) - normalised_average_radius ** 2
-                    normalised_average_radii[k, j] = normalised_average_radius
-                    normalised_std_radii[k, j] = normalised_std_radius
+                    fig, ax = plt.subplots(3, figsize=(20, 10))
+                    im = ax[0].contourf(velocity_bins, radial_bins, v_x_numbers / np.sum(v_x_numbers, axis=0), 100)
+                    fig.colorbar(im, ax=ax[0])
+                    im = ax[1].contourf(velocity_bins, radial_bins, v_y_numbers / np.sum(v_y_numbers, axis=0), 100)
+                    fig.colorbar(im, ax=ax[1])
+                    im = ax[2].contourf(velocity_bins, radial_bins, v_z_numbers / np.sum(v_z_numbers, axis=0), 100)
+                    fig.colorbar(im, ax=ax[2])
 
-                    # Collect escaped particle ratios
-                    escaped_ratios.append(final_state_results[0] / final_state_results[1])
-
-                if plot_histograms:
-                    ax[0].set_title("Radial position of different energy levels for {}m device operating at {}kA".format(radius, I * 1e-3))
-                    ax[0].set_ylabel("Probability of Position")
-                    ax[0].set_xlabel("Radial Position (m)")
-                    ax[0].legend()
-
-                    ax[1].set_title("Velocity distribution of different energy levels for {}m device operating at {}kA".format(radius, I * 1e-3))
-                    ax[1].set_ylabel("Probability of Velocity X")
-                    ax[1].set_xlabel("Velocity X")
-                    ax[1].legend()
-
-                    ax[2].set_title("Velocity distribution of different energy levels for {}m device operating at {}kA".format(radius, I * 1e-3))
-                    ax[2].set_ylabel("Probability of Velocity Y")
-                    ax[2].set_xlabel("Velocity Y")
-                    ax[2].legend()
-
-                    ax[3].set_title("Velocity distribution of different energy levels for {}m device operating at {}kA".format(radius, I * 1e-3))
-                    ax[3].set_ylabel("Probability of Velocity Z")
-                    ax[3].set_xlabel("Velocity Z")
-                    ax[3].legend()
-
-                    plt.savefig("radial_positions")
+                    plt.savefig("contours")
                     plt.show()
-
-                    plt.figure()
-
-                    plt.semilogx(energies, escaped_ratios)
-
-                    plt.show()
-
-            # Plot average radial distributions
-            plt.figure()
-            for j, energy in enumerate(energies):
-                plt.errorbar(currents, normalised_average_radii[:, j], yerr=normalised_std_radii[:, j],
-                             label="energy-{}-radius-{}".format(energy, radius))
-            plt.xscale('log')
-            plt.xlabel("Currents [kA]")
-            plt.ylabel("Normalised average radius")
-            plt.title("Average radial locations for {}m device".format(radius))
-            plt.legend()
-            plt.savefig("normalised_average_radii_{}.png".format(radius))
-            plt.show()
 
 
 if __name__ == "__main__":
     radius = [1.0]
     current = [1e4]
-    energies = [1.0, 10.0, 100.0, 1000.0, 1e4]
-    process_radial_locations(energies, radius, current, plot_histograms=True)
+    energies = [1000.0]
+    process_radial_locations(energies, radius, current)
 
