@@ -8,12 +8,11 @@ This script is used to process results for velocity probability distributions
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from vtk.util.numpy_support import numpy_to_vtk
 
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
-def process_radial_locations(energies, radii, currents):
+def process_radial_locations(energies, radii, currents, limit_radius=False):
     # Loop through simulations
     output_dirs = ["results"]
     for output_dir in output_dirs:
@@ -51,12 +50,15 @@ def process_radial_locations(energies, radii, currents):
 
                                     vel = np.sqrt(2.0 * energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
                                     velocity_bins = np.linspace(-vel, vel, v_x.shape[1])
-                                if "_y" in file:
+                                elif "_y" in file:
                                     v_y = np.loadtxt(output_path)
                                     v_y_numbers = v_y if v_y_numbers is None else v_y + v_y_numbers
-                                if "_z" in file:
+                                elif "_z" in file:
                                     v_z = np.loadtxt(output_path)
                                     v_z_numbers = v_z if v_z_numbers is None else v_z + v_z_numbers
+                                else:
+                                    v_tot = np.loadtxt(output_path)
+                                    v_tot_numbers = v_tot if v_tot_numbers is None else v_tot + v_tot_numbers
 
                             # Load final state
                             if state_name in file:
@@ -64,25 +66,45 @@ def process_radial_locations(energies, radii, currents):
                                 final_state_results[0] += np.sum(new_results[:, 4])
                                 final_state_results[1] += new_results.shape[0]
 
-                    print(np.sum(v_x_numbers))
-                    print(np.sum(v_y_numbers))
-                    print(np.sum(v_z_numbers))
+                    # Limit radial distance to 1.5 times coil radius
+                    if limit_radius:
+                        indices = np.logical_and(0.02 < radial_bins, radial_bins < 1.0)
+                        radial_bins = radial_bins[indices]
+                        v_x_numbers = v_x_numbers[indices, :]
+                        v_y_numbers = v_y_numbers[indices, :]
+                        v_z_numbers = v_z_numbers[indices, :]
 
-                    fig, ax = plt.subplots(3, figsize=(20, 10))
-                    im = ax[0].contourf(velocity_bins, radial_bins, v_x_numbers / np.sum(v_x_numbers, axis=0), 100)
+                    num_samples = final_state_results[1]
+                    escaped_ratio = final_state_results[0] / final_state_results[1]
+                    print("Number of samples: {}".format(np.sum(v_x_numbers) * 1e-6))
+
+                    # Get number of samples per radial bin
+                    num_per_v_x = np.sum(v_x_numbers, axis=1)
+                    max_in_x = np.amax(v_x_numbers, axis=1)
+                    max_in_y = np.amax(v_y_numbers, axis=1)
+                    max_in_z = np.amax(v_z_numbers, axis=1)
+
+                    # Plot histograms for each radial point in the distribution
+                    fig, ax = plt.subplots(5, figsize=(20, 10))
+                    im = ax[0].contourf(radial_bins, velocity_bins, v_x_numbers.transpose() / max_in_x, 100)
                     fig.colorbar(im, ax=ax[0])
-                    im = ax[1].contourf(velocity_bins, radial_bins, v_y_numbers / np.sum(v_y_numbers, axis=0), 100)
+                    im = ax[1].contourf(radial_bins, velocity_bins, v_y_numbers.transpose() / max_in_y, 100)
                     fig.colorbar(im, ax=ax[1])
-                    im = ax[2].contourf(velocity_bins, radial_bins, v_z_numbers / np.sum(v_z_numbers, axis=0), 100)
+                    im = ax[2].contourf(radial_bins, velocity_bins, v_z_numbers.transpose() / max_in_z, 100)
                     fig.colorbar(im, ax=ax[2])
+                    ax[3].plot(radial_bins, radial_numbers)
+                    ax[4].semilogy(radial_bins, num_per_v_x)
 
+                    fig.suptitle("Radial and orthogonal histograms of velocity during simulation for {} electron in "
+                                 "a {}m device at {}kA - {}% Escaped from {} particles".format(energy, radius, I * 1e-3,
+                                                                                             escaped_ratio * 100.0, num_samples))
                     plt.savefig("contours")
                     plt.show()
 
 
 if __name__ == "__main__":
-    radius = [1.0]
-    current = [1e4]
-    energies = [1000.0]
+    radius = [10.0]
+    current = [1e5]
+    energies = [10.0, 100.0, 1000.0]
     process_radial_locations(energies, radius, current)
 
