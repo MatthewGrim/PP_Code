@@ -237,13 +237,16 @@ def get_radial_distributions():
         for current in I:
             for electron_energy in electron_energies:
                 if electron_energy <= 10.0:
-                    batch_numbers = 2
+                    batch_numbers_begin = 0
+                    batch_numbers_end = 2
                 elif electron_energy <= 100.0:
-                    batch_numbers = 4
+                    batch_numbers_begin = 0
+                    batch_numbers_end = 4
                 else:
-                    batch_numbers = 1
+                    batch_numbers_begin = 0
+                    batch_numbers_end = 8
 
-                for batch_num in range(batch_numbers):
+                for batch_num in range(batch_numbers_begin, batch_numbers_end):
                     args.append((radius, electron_energy, current, batch_num + 1))
     pool.map(run_parallel_sims, args)
     pool.close()
