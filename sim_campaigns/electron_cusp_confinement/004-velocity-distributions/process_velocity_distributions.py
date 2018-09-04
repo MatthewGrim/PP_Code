@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
-def process_radial_locations(energies, radii, currents, limit_radius=False):
+def process_radial_locations(energies, radii, currents, limit_radius=False, plot_velocity_histograms=True):
     # Loop through simulations
     output_dirs = ["results"]
     for output_dir in output_dirs:
@@ -78,37 +78,39 @@ def process_radial_locations(energies, radii, currents, limit_radius=False):
                     escaped_ratio = final_state_results[0] / final_state_results[1]
                     print("Number of samples: {}".format(np.sum(v_x_numbers) * 1e-6))
 
-                    # Get number of samples per radial bin
-                    num_per_v_x = np.sum(v_x_numbers, axis=1)
-                    max_in_x = np.amax(v_x_numbers, axis=1)
-                    max_in_y = np.amax(v_y_numbers, axis=1)
-                    max_in_z = np.amax(v_z_numbers, axis=1)
+                    if plot_velocity_histograms:
+                        # Get number of samples per radial bin
+                        num_per_v_x = np.sum(v_x_numbers, axis=1)
+                        max_in_x = np.amax(v_x_numbers, axis=1)
+                        max_in_y = np.amax(v_y_numbers, axis=1)
+                        max_in_z = np.amax(v_z_numbers, axis=1)
 
-                    # Plot histograms for each radial point in the distribution
-                    fig, ax = plt.subplots(5, figsize=(10, 10), sharex=True)
-                    im = ax[0].contourf(radial_bins, velocity_bins, v_x_numbers.transpose() / max_in_x, 100)
-                    ax[0].set_ylabel("v_r")
-                    im = ax[1].contourf(radial_bins, velocity_bins, v_y_numbers.transpose() / max_in_y, 100)
-                    ax[1].set_ylabel("v_ort_1")
-                    im = ax[2].contourf(radial_bins, velocity_bins, v_z_numbers.transpose() / max_in_z, 100)
-                    ax[2].set_ylabel("v_ort_2")
-                    ax[3].plot(radial_bins, radial_numbers / np.max(radial_numbers))
-                    ax[3].set_xlim([radial_bins[0], radial_bins[-1]])
-                    ax[3].set_ylabel("Radial Distribution")
-                    ax[4].semilogy(radial_bins, num_per_v_x)
-                    ax[4].set_xlim([radial_bins[0], radial_bins[-1]])
-                    ax[4].set_ylabel("Sample size")
-                    
-                    fig.suptitle("Histograms for {}eV electron in a {}m device at {}kA - {}% Escaped from {} particles".format(energy, radius, I * 1e-3,
-                                                                                             round(escaped_ratio * 100.0, 2), 
-                                                                                             num_samples))
-                    plt.savefig("histogram_results-{}-{}-{}.png".format(radius, energy, I * 1e-3))
-                    plt.show()
+                        # Plot histograms for each radial point in the distribution
+                        fig, ax = plt.subplots(5, figsize=(10, 10), sharex=True)
+                        ax[0].contourf(radial_bins, velocity_bins, v_x_numbers.transpose() / max_in_x, 100)
+                        ax[0].set_ylabel("v_r")
+                        ax[1].contourf(radial_bins, velocity_bins, v_y_numbers.transpose() / max_in_y, 100)
+                        ax[1].set_ylabel("v_ort_1")
+                        ax[2].contourf(radial_bins, velocity_bins, v_z_numbers.transpose() / max_in_z, 100)
+                        ax[2].set_ylabel("v_ort_2")
+                        ax[3].plot(radial_bins, radial_numbers / np.max(radial_numbers))
+                        ax[3].set_xlim([radial_bins[0], radial_bins[-1]])
+                        ax[3].set_ylabel("Radial Distribution")
+                        ax[4].semilogy(radial_bins, num_per_v_x)
+                        ax[4].set_xlim([radial_bins[0], radial_bins[-1]])
+                        ax[4].set_ylabel("Sample size")
+
+                        fig.suptitle("Histograms for {}eV electron in a {}m device at {}kA - {}% Escaped from {} particles".format(energy, radius, I * 1e-3,
+                                                                                                 round(escaped_ratio * 100.0, 2),
+                                                                                                 num_samples))
+                        result_name = "histogram_results-{}-{}-{}.png".format(radius, energy, I * 1e-3)
+                        plt.savefig(os.path.join(data_dir, result_name))
+                        plt.show()
 
 
 if __name__ == "__main__":
-    radius = [10.0]
-    current = [1e4]
-    energies = [10.0]
-    process_radial_locations(energies, radius, current)
+    radius = [1.0, 10.0]
+    current = [1e3, 1e4, 1e5]
+    energies = [1.0, 10.0, 100.0, 1000.0]
+    process_radial_locations(energies, radius, current, plot_velocity_histograms=False)
 

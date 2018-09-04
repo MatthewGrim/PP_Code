@@ -117,7 +117,7 @@ def run_parallel_sims(params):
     np.random.seed(seed)
 
     # Run simulations
-    num_radial_bins = 100
+    num_radial_bins = 200
     num_velocity_bins = 250
     total_particle_position_count = np.zeros((num_radial_bins,))
     total_particle_velocity_count_x = np.zeros((num_radial_bins, num_velocity_bins - 1))
