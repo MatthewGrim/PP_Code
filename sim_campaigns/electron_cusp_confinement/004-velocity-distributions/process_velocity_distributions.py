@@ -16,9 +16,14 @@ def process_radial_locations(energies, radii, currents, limit_radius=False, plot
     # Loop through simulations
     output_dirs = ["results"]
     for output_dir in output_dirs:
-        for radius in radii:
-            for k, I in enumerate(currents):
-                for j, energy in enumerate(energies):
+        mean_confinement_times = np.zeros((len(radii), len(currents), len(energies)))
+        for i, radius in enumerate(radii):
+            # Output arrays for normalised average radii, its standard deviation and mean confinement time
+            normalised_average_radii = np.zeros((len(currents), len(energies)))
+            normalised_std_radii = np.zeros((len(currents), len(energies)))
+
+            for j, I in enumerate(currents):
+                for k, energy in enumerate(energies):
                     position_name = "radial_distribution-current-{}-radius-{}-energy-{}".format(I, radius, energy)
                     velocity_name = "velocity_distribution-current-{}-radius-{}-energy-{}".format(I, radius, energy)
                     state_name = "final_state-current-{}-radius-{}-energy-{}".format(I, radius, energy)
@@ -33,6 +38,7 @@ def process_radial_locations(energies, radii, currents, limit_radius=False, plot
                     v_y_numbers = None
                     v_z_numbers = None
                     final_state_results = np.zeros((2,))
+                    confinement_time_sum = 0.0
                     for file in dir_files:
                         if os.path.isfile(os.path.join(data_dir, file)):
                             output_path = os.path.join(data_dir, file)
@@ -65,19 +71,26 @@ def process_radial_locations(energies, radii, currents, limit_radius=False, plot
                                 new_results = np.loadtxt(output_path)
                                 final_state_results[0] += np.sum(new_results[:, 4])
                                 final_state_results[1] += new_results.shape[0]
+                                confinement_time_sum += np.sum(new_results[:, 0])
 
                     # Limit radial distance to 1.5 times coil radius
                     if limit_radius:
-                        indices = np.logical_and(0.02 < radial_bins, radial_bins < 1.0)
+                        indices = np.logical_and(0.02 * radius < radial_bins, radial_bins < 1.0 * radius)
                         radial_bins = radial_bins[indices]
                         v_x_numbers = v_x_numbers[indices, :]
                         v_y_numbers = v_y_numbers[indices, :]
                         v_z_numbers = v_z_numbers[indices, :]
 
+                    # --- Print number of samples ---
                     num_samples = final_state_results[1]
                     escaped_ratio = final_state_results[0] / final_state_results[1]
-                    print("Number of samples: {}".format(np.sum(v_x_numbers) * 1e-6))
+                    # print("Number of samples: {}".format(np.sum(v_x_numbers) * 1e-6))
 
+                    # --- Get mean confinement time ---
+                    mean_confinement_time = confinement_time_sum / num_samples
+                    mean_confinement_times[i, j, k] = mean_confinement_time
+
+                    # --- Plot Histograms ---
                     if plot_velocity_histograms:
                         # Get number of samples per radial bin
                         num_per_v_x = np.sum(v_x_numbers, axis=1)
@@ -101,11 +114,46 @@ def process_radial_locations(energies, radii, currents, limit_radius=False, plot
                         ax[4].set_ylabel("Sample size")
 
                         fig.suptitle("Histograms for {}eV electron in a {}m device at {}kA - {}% Escaped from {} particles".format(energy, radius, I * 1e-3,
-                                                                                                 round(escaped_ratio * 100.0, 2),
-                                                                                                 num_samples))
+                                                                                                                                   round(escaped_ratio * 100.0, 2),
+                                                                                                                                   num_samples))
                         result_name = "histogram_results-{}-{}-{}.png".format(radius, energy, I * 1e-3)
                         plt.savefig(os.path.join(data_dir, result_name))
                         plt.show()
+
+                    # --- Get average radial location ---
+                    radial_probabilities = radial_numbers / np.sum(radial_numbers)
+                    normalised_radii = radial_bins / radius
+                    normalised_average_radius = np.sum(normalised_radii * radial_probabilities)
+                    normalised_std_radius = np.sum(normalised_radii ** 2 * radial_probabilities) - normalised_average_radius ** 2
+                    normalised_average_radii[j, k] = normalised_average_radius
+                    normalised_std_radii[j, k] = normalised_std_radius
+
+            # --- Plot average radial distributions ---
+            plt.figure()
+            for k, energy in enumerate(energies):
+                plt.errorbar(currents, normalised_average_radii[:, k], yerr=normalised_std_radii[:, k],
+                             label="energy-{}-radius-{}".format(energy, radius))
+            plt.xscale('log')
+            plt.xlabel("Currents [kA]")
+            plt.ylabel("Normalised average radius")
+            plt.title("Average radial locations for {}m device".format(radius))
+            plt.legend()
+            plt.savefig("normalised_average_radii_{}.png".format(radius))
+            plt.show()
+
+    for j, current in enumerate(currents):
+        # --- Plot mean confinement times ---
+        plt.figure()
+        for k, energy in enumerate(energies):
+            plt.plot(radii, mean_confinement_times[:, j, k] / np.max(mean_confinement_times[:, j, k]), label="energy-{}eV".format(energy))
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlabel('Radius [m]')
+        plt.ylabel('Normalised mean confinement time')
+        plt.title('Mean confinement times for {}kA device'.format(current))
+        plt.legend()
+        # plt.savefig('mean_confinement_time_{}.png'.format(radius))
+        plt.show()
 
 
 if __name__ == "__main__":
