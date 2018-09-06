@@ -84,16 +84,16 @@ def run_parallel_sims(params):
     dI_dt = 0.0
 
     print("Starting process: electron energy {}eV".format(electron_energy_eV))
-    
+
     # Generate Polywell field
     I = 1e4
     radius = 1.0
+    to_kA = 1e-3
+    loop_pts = 200
+    domain_pts = 130
+    loop_offset = 1.25
+    dom_size = 1.1 * loop_offset * radius
     if use_interpolation:
-        to_kA = 1e-3
-        loop_pts = 200
-        domain_pts = 130
-        loop_offset = 1.25
-        dom_size = 1.1 * loop_offset * radius
         file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
         file_path = os.path.join("..", "mesh_generation", "data", "radius-{}m".format(radius), "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
         b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)

@@ -76,5 +76,5 @@ if __name__ == '__main__':
     I = [100.0, 1e3, 1e4]
     seed = 1
 
-    # process_fig2_results(I, seed)
+    process_fig2_results(I, seed)
     process_fig5_results(I, seed)
