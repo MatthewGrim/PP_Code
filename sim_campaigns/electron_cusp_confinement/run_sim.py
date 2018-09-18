@@ -101,7 +101,7 @@ def run_parallel_sims(params):
         os.makedirs(output_dir)
 
     # Get process name
-    process_name = "electron_energy-{}eV-current-{}kA-batch-{}".format(electron_energy, I * to_kA, batch_num)
+    process_name = "radius-{}m-energy-{}eV-current-{}kA-batch-{}".format(radius, electron_energy, I * to_kA, batch_num)
     print("Starting process: {}".format(process_name))
 
     # Generate Polywell field
