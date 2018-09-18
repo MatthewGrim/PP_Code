@@ -54,7 +54,7 @@ def replicate_fig6():
 
 
 if __name__ == '__main__':
-    # replicate_fig2()
-    # replicate_fig5()
+    replicate_fig2()
+    replicate_fig5()
     replicate_fig6()
 

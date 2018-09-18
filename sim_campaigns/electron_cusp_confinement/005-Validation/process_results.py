@@ -51,7 +51,7 @@ def process_fig2_results():
 def process_fig5_results():
     seed = 1
     radius = 1.0
-    I = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
+    I = np.asarray([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0])
     energy = 100.0
 
     # Load Gummersall data
@@ -61,16 +61,17 @@ def process_fig5_results():
 
     # Load sim results
     output_dirs = ["results"]
+    A_to_kA = 1e3
     for output_dir in output_dirs:
         t_means = []
         for current in I:
             res_dir = os.path.join(output_dir, "radius-{}m".format(radius), "current-{}kA".format(current))
-            output_path = os.path.join(res_dir, "final_state-current-{}-radius-{}-energy-{}-batch-{}.txt".format(current * 1e3, radius, energy, seed))
+            output_path = os.path.join(res_dir, "final_state-current-{}-radius-{}-energy-{}-batch-{}.txt".format(current * A_to_kA, radius, energy, seed))
             results = np.loadtxt(output_path)
 
             t_means.append(np.average(results[:, 0]))
 
-        plt.scatter(I, t_means, label="sim_results")
+        plt.scatter(I * A_to_kA, t_means, label="sim_results")
 
     # plt.xlim([100.0, 2e4])
     # plt.ylim([0.0, 5.0])
@@ -82,10 +83,10 @@ def process_fig5_results():
     plt.show()
 
 
-def process_fig6_results(electron_energies):
+def process_fig6_results():
     seed = 1
     radius = 1.0
-    I = [10.0]
+    I = 10.0
     electron_energies = [10.0, 20.0, 50.0, 100.0, 200.0, 500.0]
 
     plt.figure(figsize=(20, 10))
@@ -100,7 +101,7 @@ def process_fig6_results(electron_energies):
         t_means = []
         for energy in electron_energies:
             res_dir = os.path.join(output_dir, "radius-{}m".format(radius), "current-{}kA".format(I))
-            output_path = os.path.join(res_dir, "final_state-current-{}-radius-{}-energy-{}-batch-{}.txt".format(current * 1e3, radius, energy, seed))
+            output_path = os.path.join(res_dir, "final_state-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I * 1e3, radius, energy, seed))
             results = np.loadtxt(output_path)
 
             t_means.append(np.average(results[:, 0] * 1e6))
@@ -116,7 +117,7 @@ def process_fig6_results(electron_energies):
 
 
 if __name__ == '__main__':
-    process_fig2_results()
+    # process_fig2_results()
     # process_fig5_results()
-    # process_fig6_results()
+    process_fig6_results()
 
