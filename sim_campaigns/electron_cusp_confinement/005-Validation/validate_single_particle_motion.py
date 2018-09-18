@@ -22,8 +22,6 @@ def replicate_fig2():
     pool.close()
     pool.join()
 
-    # run_parallel_sims((0.1, 100.0, 100.0, 1, True, False))
-
 
 def replicate_fig5():
     radii = [1.0]
@@ -37,9 +35,11 @@ def replicate_fig5():
     pool.close()
     pool.join()
 
+    # run_parallel_sims((1.0, 100.0, 100.0, 1, True, False))
+
 
 def replicate_fig6():
-    radii = 1.0
+    radii = [1.0]
     I = [1e4]
     electron_energies = [10.0, 20.0, 50.0, 100.0, 200.0, 500.0]
     pool = mp.Pool(processes=2)
@@ -54,7 +54,7 @@ def replicate_fig6():
 
 
 if __name__ == '__main__':
-    replicate_fig2()
-    replicate_fig5()
+    # replicate_fig2()
+    # replicate_fig5()
     replicate_fig6()
 
