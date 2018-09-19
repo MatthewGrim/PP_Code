@@ -8,10 +8,6 @@ this simulation campaign
 
 import os
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import scipy
-import multiprocessing as mp
 
 from plasma_physics.pysrc.simulation.pic.algo.fields.magnetic_fields.generic_b_fields import InterpolatedBField
 from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import boris_solver
@@ -91,9 +87,10 @@ def run_parallel_sims(params):
     use_cartesian_reference_frame = False
 
     # Get output directory
-    if not os.path.exists("results"):
-        os.makedirs("results")
-    output_dir = os.path.join("results", "radius-{}m".format(radius))
+    res_dir = "results"
+    if not os.path.exists(res_dir):
+        os.makedirs(res_dir)
+    output_dir = os.path.join(res_dir, "radius-{}m".format(radius))
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     output_dir = os.path.join(output_dir, "current-{}kA".format(I * to_kA))
@@ -127,16 +124,23 @@ def run_parallel_sims(params):
     radial_bins = np.linspace(0.0, np.sqrt(3) * loop_offset * radius, num_radial_bins)
     vel = np.sqrt(2.0 * electron_energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
     velocity_bins = np.linspace(-vel, vel, num_velocity_bins)
-    num_sims = 200
+    num_sims = 420
     final_positions = []
     for i in range(num_sims):
-        # Define particle velocity and 100eV charge particle
+        # Define particle velocity
         z_unit = np.random.uniform(-1.0, 1.0)
         xy_plane = np.sqrt(1 - z_unit ** 2)
         phi = np.random.uniform(0.0, 2 * np.pi)
         velocity = np.asarray([xy_plane * np.cos(phi), xy_plane * np.sin(phi), z_unit]) * vel
-        particle = PICParticle(9.1e-31, 1.6e-19,
-                               np.random.uniform(-3.0 * radius / 16.0, 3.0 * radius / 16.0, size=(3,)), velocity)
+
+        # Generate particle position
+        z_unit = np.random.uniform(-1.0, 1.0)
+        xy_plane = np.sqrt(1 - z_unit ** 2)
+        phi = np.random.uniform(0.0, 2 * np.pi)
+        position = np.asarray([xy_plane * np.cos(phi), xy_plane * np.sin(phi), z_unit]) * np.random.uniform(0.0, 3.0 * radius / 16.0)
+
+        # Generate particle
+        particle = PICParticle(9.1e-31, 1.6e-19, position, velocity)
 
         t, x, y, z, v_x, v_y, v_z, final_idx = run_simulation((b_field, particle, radius, loop_offset * radius, I, dI_dt))
 
