@@ -31,8 +31,8 @@ def run_simulation(params):
     M = np.asarray([particle.mass])
 
     # Set timestep according to Gummersall approximation
-    dt = 1e-9 * radius
-    final_time = 1e5 * dt
+    dt = 1e-11 * radius
+    final_time = 1e7 * dt
 
     num_steps = int(final_time / dt)
     times = np.linspace(0.0, final_time, num_steps)
@@ -87,7 +87,7 @@ def run_parallel_sims(params):
     use_cartesian_reference_frame = False
 
     # Get output directory
-    res_dir = "results"
+    res_dir = "results_biased"
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
     output_dir = os.path.join(res_dir, "radius-{}m".format(radius))
