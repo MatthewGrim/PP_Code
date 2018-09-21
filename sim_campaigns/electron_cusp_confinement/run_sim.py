@@ -8,6 +8,8 @@ this simulation campaign
 
 import os
 import numpy as np
+from matplotlib import pyplot as plt
+
 
 from plasma_physics.pysrc.simulation.pic.algo.fields.magnetic_fields.generic_b_fields import InterpolatedBField
 from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import boris_solver
@@ -18,6 +20,7 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 def run_simulation(params):
     b_field, particle, radius, domain_size, I, dI_dt = params
     print_output = False
+    plot_sim = False
 
     # There is no E field in the simulations
     def e_field(x):
@@ -31,8 +34,8 @@ def run_simulation(params):
     M = np.asarray([particle.mass])
 
     # Set timestep according to Gummersall approximation
-    dt = 1e-11 * radius
-    final_time = 1e7 * dt
+    dt = 1e-9 * radius
+    final_time = 1e5 * dt
 
     num_steps = int(final_time / dt)
     times = np.linspace(0.0, final_time, num_steps)
@@ -61,6 +64,21 @@ def run_simulation(params):
             v_y = velocities[:, :, 1].flatten()
             v_z = velocities[:, :, 2].flatten()
 
+            if plot_sim:
+                # Plot 3D motion
+                fig = plt.figure(figsize=(20, 10))
+                ax = fig.add_subplot('111', projection='3d')
+                ax.plot(x[:i-1], y[:i-1], z[:i-1], label='numerical')
+                ax.set_xlim([-1.25 * radius, 1.25 * radius])
+                ax.set_ylim([-1.25 * radius, 1.25 * radius])
+                ax.set_zlim([-1.25 * radius, 1.25 * radius])
+                ax.set_xlabel('X')
+                ax.set_ylabel('Y')
+                ax.set_zlabel('Z')
+                ax.legend(loc='best')
+                ax.set_title("Analytic and Numerical Particle Motion")
+                plt.show()
+
             return times, x, y, z, v_x, v_y, v_z, i - 1
 
         positions[i, :, :] = x
@@ -76,6 +94,21 @@ def run_simulation(params):
     v_y = velocities[:, :, 1].flatten()
     v_z = velocities[:, :, 2].flatten()
 
+    if plot_sim:
+        # Plot 3D motion
+        fig = plt.figure(figsize=(20, 10))
+        ax = fig.add_subplot('111', projection='3d')
+        ax.plot(x, y, z, label='numerical')
+        ax.set_xlim([-1.25 * radius, 1.25 * radius])
+        ax.set_ylim([-1.25 * radius, 1.25 * radius])
+        ax.set_zlim([-1.25 * radius, 1.25 * radius])
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.legend(loc='best')
+        ax.set_title("Analytic and Numerical Particle Motion")
+        plt.show()
+
     return times, x, y, z, v_x, v_y, v_z, None
 
 
@@ -87,7 +120,7 @@ def run_parallel_sims(params):
     use_cartesian_reference_frame = False
 
     # Get output directory
-    res_dir = "results_biased"
+    res_dir = "results_small_initialisation"
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
     output_dir = os.path.join(res_dir, "radius-{}m".format(radius))
