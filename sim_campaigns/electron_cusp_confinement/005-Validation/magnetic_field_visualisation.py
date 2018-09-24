@@ -32,7 +32,8 @@ def load_field(I, radius):
     return b_field
 
 
-def compare_fields(dom_size, numerical_pts, b_field, b_factor):
+def compare_fields(dom_size, numerical_pts, b_field, radius, current):
+    b_factor = current / radius
     unit_field = load_field(1.0, 1.0)
 
     min_dom = -dom_size
@@ -50,8 +51,8 @@ def compare_fields(dom_size, numerical_pts, b_field, b_factor):
                 field_point[0, 1] = y
                 field_point[0, 2] = z
                 b = np.abs(b_field.b_field(field_point))
-                gummersall_field = np.abs(unit_field.b_field(field_point) * b_factor)
-                b = gummersall_field / b
+                gummersall_field = np.abs(unit_field.b_field(field_point / radius) * b_factor)
+                b = gummersall_field - b
 
                 B[i, j, k, 0] = b[0, 0]
                 B[i, j, k, 1] = b[0, 1]
@@ -140,10 +141,9 @@ def visualise_field():
 def compare_field():
     I = 1e2
     radius = 0.1
-    b_factor = I / radius
     b_field = load_field(I, radius)
-    num_samples = 40
-    compare_fields(1.25 * radius, num_samples, b_field, b_factor)
+    num_samples = 20
+    compare_fields(1.25 * radius, num_samples, b_field, radius, I)
 
 
 if __name__ == '__main__':
