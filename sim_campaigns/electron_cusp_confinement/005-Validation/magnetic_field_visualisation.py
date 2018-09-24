@@ -32,6 +32,57 @@ def load_field(I, radius):
     return b_field
 
 
+def compare_fields(dom_size, numerical_pts, b_field, b_factor):
+    unit_field = load_field(1.0, 1.0)
+
+    min_dom = -dom_size
+    max_dom = dom_size
+    X = np.linspace(min_dom, max_dom, numerical_pts)
+    Y = np.linspace(min_dom, max_dom, numerical_pts)
+    Z = np.linspace(min_dom, max_dom, numerical_pts)
+    B = np.zeros((numerical_pts, numerical_pts, numerical_pts, 4))
+    for i, x in enumerate(X):
+        for j, y in enumerate(Y):
+            for k, z in enumerate(Z):
+                print(i, j, k)
+                field_point = np.zeros((1, 3))
+                field_point[0, 0] = x
+                field_point[0, 1] = y
+                field_point[0, 2] = z
+                b = np.abs(b_field.b_field(field_point))
+                gummersall_field = np.abs(unit_field.b_field(field_point) * b_factor)
+                b = gummersall_field / b
+
+                B[i, j, k, 0] = b[0, 0]
+                B[i, j, k, 1] = b[0, 1]
+                B[i, j, k, 2] = b[0, 2]
+                B[i, j, k, 3] = magnitude(b[0])
+
+    fig, ax = plt.subplots(1)
+    X_1, Y_1 = np.meshgrid(X, Y, indexing='ij')
+    im = ax.contourf(X_1, Y_1, B[:, :, numerical_pts // 2, 3], 100)
+    fig.colorbar(im, ax=ax)
+    ax.quiver(X_1, Y_1, B[:, :, numerical_pts // 2, 0], B[:, :, numerical_pts // 2, 1])
+    plt.savefig("magnetic_field_sample_xy")
+    plt.show()
+
+    fig, ax = plt.subplots(1)
+    X_2, Z_2 = np.meshgrid(X, Z, indexing='ij')
+    im = ax.contourf(X_2, Z_2, B[:, numerical_pts // 2, :, 3], 100)
+    fig.colorbar(im, ax=ax)
+    ax.quiver(X_2, Z_2, B[:, numerical_pts // 2, :, 0], B[:, numerical_pts // 2, :, 2])
+    plt.savefig("magnetic_field_sample_xz")
+    plt.show()
+
+    fig, ax = plt.subplots(1)
+    Y_3, Z_3 = np.meshgrid(X, Y, indexing='ij')
+    im = ax.contourf(Y_3, Z_3, B[numerical_pts // 2, :, :, 3], 100)
+    fig.colorbar(im, ax=ax)
+    ax.quiver(Y_3, Z_3, B[numerical_pts // 2, :, :, 1], B[numerical_pts // 2, :, :, 2])
+    plt.savefig("magnetic_field_sample_yz")
+    plt.show()
+
+
 def generate_domain(dom_size, numerical_pts, b_field):
     min_dom = -dom_size
     max_dom = dom_size
@@ -78,10 +129,24 @@ def generate_domain(dom_size, numerical_pts, b_field):
     plt.show()
 
 
-if __name__ == '__main__':
+def visualise_field():
     I = 1e4
     radius = 1.0
     b_field = load_field(I, radius)
     num_samples = 100
     generate_domain(1.25 * radius, num_samples, b_field)
+
+
+def compare_field():
+    I = 1e2
+    radius = 0.1
+    b_factor = I / radius
+    b_field = load_field(I, radius)
+    num_samples = 40
+    compare_fields(1.25 * radius, num_samples, b_field, b_factor)
+
+
+if __name__ == '__main__':
+    # visualise_field()
+    compare_field()
 
