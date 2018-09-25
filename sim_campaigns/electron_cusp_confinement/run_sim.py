@@ -12,7 +12,8 @@ from matplotlib import pyplot as plt
 
 
 from plasma_physics.pysrc.simulation.pic.algo.fields.magnetic_fields.generic_b_fields import InterpolatedBField
-from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import boris_solver
+from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import boris_solver_internal
+from plasma_physics.pysrc.simulation.pic.algo.geometry.vector_ops import magnitude
 from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import PICParticle
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
@@ -28,47 +29,67 @@ def run_simulation(params):
         dB_dt = B / I * dI_dt
         return -dB_dt
 
+    def b_field_func(x):
+        B = b_field.b_field(x / radius)
+        B *= I / radius
+        return B
+
     X = particle.position
     V = particle.velocity
     Q = np.asarray([particle.charge])
     M = np.asarray([particle.mass])
 
     # Set timestep according to Gummersall approximation
-    dt = 1e-9 * radius
-    final_time = 1e5 * dt
+    max_dt = 1e-9 * radius
+    min_dt = 1e-3 * max_dt
+    final_time = 1e5 * max_dt
+    max_steps = int(1e7)
 
-    num_steps = int(final_time / dt)
-    times = np.linspace(0.0, final_time, num_steps)
-    positions = np.zeros((times.shape[0], X.shape[0], X.shape[1]))
-    velocities = np.zeros((times.shape[0], X.shape[0], X.shape[1]))
-    for i, t in enumerate(times):
+    times = []
+    positions = []
+    velocities = []
+    t = 0.0
+    ts = 0
+    times.append(t)
+    positions.append(X)
+    velocities.append(V)
+    # Calculate fields
+    while t < final_time and ts < max_steps:
         if print_output:
             print(t / final_time)
-        if i == 0:
-            positions[i, :, :] = X
-            velocities[i, :, :] = V
-            continue
 
-        dt = times[i] - times[i - 1]
+        # Get fields
+        E = e_field(X)
+        B = b_field_func(X)
 
-        x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
+        # Calculate time step
+        dt = 0.2 * particle.mass / (magnitude(B[0]) * particle.charge)
+        dt = min(max_dt, dt)
+        dt = max(min_dt, dt)
+
+        # Update time step
+        ts += 1
+        t += dt
+
+        # Move particles
+        x, v = boris_solver_internal(E, B, X, V, Q, M, dt)
 
         if np.any(x[0, :] < -domain_size) or np.any(x[0, :] > domain_size):
             if print_output:
-                print("PARTICLE ESCAPED! - {}, {}, {}".format(i, times[i], X[0]))
+                print("PARTICLE ESCAPED! - {}, {}, {}".format(ts, t, X[0]))
 
-            x = positions[:, :, 0].flatten()
-            y = positions[:, :, 1].flatten()
-            z = positions[:, :, 2].flatten()
-            v_x = velocities[:, :, 0].flatten()
-            v_y = velocities[:, :, 1].flatten()
-            v_z = velocities[:, :, 2].flatten()
+            x = np.asarray(positions)[:, :, 0].flatten()
+            y = np.asarray(positions)[:, :, 1].flatten()
+            z = np.asarray(positions)[:, :, 2].flatten()
+            v_x = np.asarray(velocities)[:, :, 0].flatten()
+            v_y = np.asarray(velocities)[:, :, 1].flatten()
+            v_z = np.asarray(velocities)[:, :, 2].flatten()
 
             if plot_sim:
                 # Plot 3D motion
                 fig = plt.figure(figsize=(20, 10))
                 ax = fig.add_subplot('111', projection='3d')
-                ax.plot(x[:i-1], y[:i-1], z[:i-1], label='numerical')
+                ax.plot(x, y, z, label='numerical')
                 ax.set_xlim([-1.25 * radius, 1.25 * radius])
                 ax.set_ylim([-1.25 * radius, 1.25 * radius])
                 ax.set_zlim([-1.25 * radius, 1.25 * radius])
@@ -79,20 +100,21 @@ def run_simulation(params):
                 ax.set_title("Analytic and Numerical Particle Motion")
                 plt.show()
 
-            return times, x, y, z, v_x, v_y, v_z, i - 1
+            return times, x, y, z, v_x, v_y, v_z, True
 
-        positions[i, :, :] = x
-        velocities[i, :, :] = v
+        times.append(t)
+        positions.append(x)
+        velocities.append(v)
         X = x
         V = v
 
     # Convert points to x, y and z locations
-    x = positions[:, :, 0].flatten()
-    y = positions[:, :, 1].flatten()
-    z = positions[:, :, 2].flatten()
-    v_x = velocities[:, :, 0].flatten()
-    v_y = velocities[:, :, 1].flatten()
-    v_z = velocities[:, :, 2].flatten()
+    x = np.asarray(positions)[:, :, 0].flatten()
+    y = np.asarray(positions)[:, :, 1].flatten()
+    z = np.asarray(positions)[:, :, 2].flatten()
+    v_x = np.asarray(velocities)[:, :, 0].flatten()
+    v_y = np.asarray(velocities)[:, :, 1].flatten()
+    v_z = np.asarray(velocities)[:, :, 2].flatten()
 
     if plot_sim:
         # Plot 3D motion
@@ -109,7 +131,7 @@ def run_simulation(params):
         ax.set_title("Analytic and Numerical Particle Motion")
         plt.show()
 
-    return times, x, y, z, v_x, v_y, v_z, None
+    return times, x, y, z, v_x, v_y, v_z, False
 
 
 def run_parallel_sims(params):
@@ -120,7 +142,7 @@ def run_parallel_sims(params):
     use_cartesian_reference_frame = False
 
     # Get output directory
-    res_dir = "results_small_initialisation"
+    res_dir = "results_low_loop_res_25"
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
     output_dir = os.path.join(res_dir, "radius-{}m".format(radius))
@@ -138,10 +160,9 @@ def run_parallel_sims(params):
     loop_pts = 200
     domain_pts = 130
     loop_offset = 1.25
-    dom_size = 1.1 * loop_offset * radius
-    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
-    file_path = os.path.join("..", "mesh_generation", "data", "radius-{}m".format(radius),
-                             "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
+    dom_size = 1.1 * loop_offset * 1.0
+    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(1.0 * to_kA, 1.0, loop_offset, domain_pts, loop_pts, dom_size)
+    file_path = os.path.join("..", "mesh_generation", "data", "radius-1.0m", "current-0.001kA", "domres-{}".format(domain_pts), file_name)
     b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
 
     seed = batch_num
@@ -175,31 +196,28 @@ def run_parallel_sims(params):
         # Generate particle
         particle = PICParticle(9.1e-31, 1.6e-19, position, velocity)
 
-        t, x, y, z, v_x, v_y, v_z, final_idx = run_simulation((b_field, particle, radius, loop_offset * radius, I, dI_dt))
-
-        # Add results to list
-        escaped = False if final_idx is None else True
-        final_idx = final_idx if escaped else -1
+        # Run simulation
+        t, x, y, z, v_x, v_y, v_z, escaped = run_simulation((b_field, particle, radius, loop_offset * radius, I, dI_dt))
 
         # Save final position output
         if get_final_state:
-            final_positions.append([t[final_idx], x[final_idx], y[final_idx], z[final_idx], escaped])
+            final_positions.append([t[-1], x[-1], y[-1], z[-1], escaped])
 
         # Change coordinate system
         if get_histograms:
-            radial_position = np.sqrt(x[:final_idx] ** 2 + y[:final_idx] ** 2 + z[:final_idx] ** 2)
+            radial_position = np.sqrt(x ** 2 + y ** 2 + z ** 2)
             if use_cartesian_reference_frame:
                 particle_position_count, particle_velocity_count = get_particle_count(radial_bins, velocity_bins, radial_position, v_x, v_y, v_z)
             else:
-                r_unit = np.zeros((3, x[:final_idx].shape[0]))
-                r_unit[0, :] = x[:final_idx]
-                r_unit[1, :] = y[:final_idx]
-                r_unit[2, :] = z[:final_idx]
-                r_unit /= np.sqrt(x[:final_idx] ** 2 + y[:final_idx] ** 2 + z[:final_idx] ** 2)
+                r_unit = np.zeros((3, x.shape[0]))
+                r_unit[0, :] = x
+                r_unit[1, :] = y
+                r_unit[2, :] = z
+                r_unit /= np.sqrt(x ** 2 + y ** 2 + z ** 2)
 
-                xy_unit = np.zeros((3, x[:final_idx].shape[0]))
-                xy_unit[0, :] = x[:final_idx]
-                xy_unit[1, :] = y[:final_idx]
+                xy_unit = np.zeros((3, x.shape[0]))
+                xy_unit[0, :] = x
+                xy_unit[1, :] = y
                 xy_unit /= np.sqrt(np.sum(xy_unit ** 2, axis=0))
 
                 latitude_unit = np.zeros(xy_unit.shape)
@@ -207,14 +225,14 @@ def run_parallel_sims(params):
                 latitude_unit[1] = -xy_unit[0, :]
                 latitude_unit[2] = 0.0
 
-                longitude_unit = np.zeros((3, x[:final_idx].shape[0]))
+                longitude_unit = np.zeros((3, x.shape[0]))
                 longitude_unit[0, :] = r_unit[1, :] * latitude_unit[2, :] - r_unit[2] * latitude_unit[1]
                 longitude_unit[1, :] = r_unit[2, :] * latitude_unit[0, :] - r_unit[0] * latitude_unit[2]
                 longitude_unit[2, :] = r_unit[0, :] * latitude_unit[1, :] - r_unit[1] * latitude_unit[0]
 
-                v_r = v_x[:final_idx] * r_unit[0, :] + v_y[:final_idx] * r_unit[1, :] + v_z[:final_idx] * r_unit[2, :]
-                v_lat = v_x[:final_idx] * latitude_unit[0, :] + v_y[:final_idx] * latitude_unit[1, :] + v_z[:final_idx] * latitude_unit[2, :]
-                v_long = v_x[:final_idx] * longitude_unit[0, :] + v_y[:final_idx] * longitude_unit[1, :] + v_z[:final_idx] * longitude_unit[2, :]
+                v_r = v_x * r_unit[0, :] + v_y * r_unit[1, :] + v_z * r_unit[2, :]
+                v_lat = v_x * latitude_unit[0, :] + v_y * latitude_unit[1, :] + v_z * latitude_unit[2, :]
+                v_long = v_x * longitude_unit[0, :] + v_y * longitude_unit[1, :] + v_z * longitude_unit[2, :]
 
                 particle_position_count, particle_velocity_count = get_particle_count(radial_bins, velocity_bins, radial_position, v_r, v_lat, v_long)
 
