@@ -44,8 +44,8 @@ def run_sim(params):
     M = np.asarray([particle.mass])
 
     # Set timestep according to Gummersall approximation
-    dt = 1e-10 * radius
-    final_time = 1e6 * dt
+    dt = 1e-7 * radius
+    final_time = 1e7 * dt
 
     num_steps = int(final_time / dt)
     times = np.linspace(0.0, final_time, num_steps)
@@ -134,7 +134,7 @@ def run_parallel_sims(params):
     radial_bins = np.linspace(0.0, np.sqrt(3) * loop_offset * radius, num_radial_bins)
     vel = np.sqrt(2.0 * electron_energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
     velocity_bins = np.linspace(-vel, vel, num_velocity_bins)
-    num_sims = 50
+    num_sims = 400
     final_positions = []
     for i in range(num_sims):
         # Define particle velocity and 100eV charge particle
@@ -236,19 +236,20 @@ def get_particle_count(radial_bins, velocity_bins, radial_positions, v_x, v_y, v
 
 
 def get_radial_distributions():
-    radii = [1.0]
+    radii = [1.0, 10.0]
     electron_energies = [10.0, 100.0]
     I = [1e5]
-    number_densities = [0.0, 1e4, 1e8, 1e12]
+    number_densities = [0.0, 1e3, 1e6, 1e9, 1e12]
     pool = mp.Pool(processes=4)
     args = []
     for radius in radii:
         for current in I:
             for electron_energy in electron_energies:
                 for n in number_densities:
-                    batch_numbers = 1
-
-                    for batch_num in range(batch_numbers):
+                    batch_numbers_begin = 0
+                    batch_numbers_end =3
+                    
+                    for batch_num in range(batch_numbers_begin, batch_numbers_end):
                         args.append((radius, electron_energy, current, n, batch_num + 1))
     pool.map(run_parallel_sims, args)
     pool.close()
