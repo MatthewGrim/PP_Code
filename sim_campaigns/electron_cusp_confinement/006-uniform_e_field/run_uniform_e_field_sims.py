@@ -44,7 +44,7 @@ def run_sim(params):
     M = np.asarray([particle.mass])
 
     # Set timestep according to Gummersall approximation
-    dt = 1e-7 * radius
+    dt = 1e-11 * radius
     final_time = 1e7 * dt
 
     num_steps = int(final_time / dt)
@@ -236,9 +236,9 @@ def get_particle_count(radial_bins, velocity_bins, radial_positions, v_x, v_y, v
 
 
 def get_radial_distributions():
-    radii = [1.0, 10.0]
+    radii = [1.0, 5.0, 10.0]
     electron_energies = [10.0, 100.0]
-    I = [1e5]
+    I = [1e4, 1e5]
     number_densities = [0.0, 1e3, 1e6, 1e9, 1e12]
     pool = mp.Pool(processes=4)
     args = []
@@ -247,7 +247,7 @@ def get_radial_distributions():
             for electron_energy in electron_energies:
                 for n in number_densities:
                     batch_numbers_begin = 0
-                    batch_numbers_end =3
+                    batch_numbers_end = 3
                     
                     for batch_num in range(batch_numbers_begin, batch_numbers_end):
                         args.append((radius, electron_energy, current, n, batch_num + 1))
