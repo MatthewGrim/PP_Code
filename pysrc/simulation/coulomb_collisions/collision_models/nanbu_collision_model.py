@@ -78,7 +78,8 @@ class NanbuCollisionModel(object):
         self.temperature = None
 
         # Generator interpolator for A
-        data_file = os.path.join("/home/rohan/Code/plasma_physics/pysrc/simulation/coulomb_collisions/collision_models", "data", "A_interpolation_values.txt")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        data_file = os.path.join(dir_path, "data", "A_interpolation_values.txt")
         self.__A_data = np.loadtxt(data_file)
         s_data = self.__A_data[0, :]
         A_data = self.__A_data[1, :]
