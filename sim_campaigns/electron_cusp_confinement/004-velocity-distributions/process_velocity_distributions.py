@@ -8,6 +8,7 @@ This script is used to process results for velocity probability distributions
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
@@ -106,16 +107,38 @@ def process_radial_locations(energies, radii, currents,
                         v_z_numbers_half_set = v_z if count < half_results else v_z_numbers_half_set
 
                     # Load final state
+                    fig = plt.figure(figsize=(10, 10))
                     for count, file in enumerate(state_files):
+                        # Load file and get statistics
                         new_results = np.loadtxt(file)
                         final_state_results[0] += np.sum(new_results[:, 4])
                         final_state_results[1] += new_results.shape[0]
                         confinement_time_sum += np.sum(new_results[:, 0])
 
-                    # --- Print number of samples ---
+                        # Plot escaped locations
+                        final_x_position = new_results[:, 1]
+                        final_y_position = new_results[:, 2]
+                        final_z_position = new_results[:, 3]
+                        escaped = np.where(new_results[:, 4] > 0.5)[0]
+                        confined = np.where(new_results[:, 4] < 0.5)[0]
+                        ax = fig.add_subplot('111', projection='3d')
+                        ax.scatter(final_x_position[confined], final_y_position[confined], final_z_position[confined], c='b', label='confined')
+                        ax.scatter(final_x_position[escaped], final_y_position[escaped], final_z_position[escaped], c='r', label='escaped')
+                    # Get number of samples and escape ratio
                     num_samples = final_state_results[1]
                     escaped_ratio = final_state_results[0] / final_state_results[1]
+
+                    ax.set_xlabel('X')
+                    ax.set_ylabel('Y')
+                    ax.set_zlabel('Z')
+                    plt.title("Location of escaped electrons for {}eV electron in a {}m device at {}kA - {}% Escaped from {} particles".format(energy, radius, I * 1e-3, round(escaped_ratio * 100.0, 2), num_samples))
+                    plot_name = "escape_locations-{}-{}-{}.png".format(radius, energy, I * 1e-3)
+                    plt.savefig(os.path.join(data_dir, plot_name))
+                    plt.close()
+
+                    # --- Print number of samples ---
                     print("Number of samples: {}".format(np.sum(v_x_numbers) * 1e-6))
+                    print("Escaped ratio: {}".format(escaped_ratio))
 
                     # --- Get mean confinement time ---
                     mean_confinement_time = confinement_time_sum / num_samples
@@ -182,6 +205,7 @@ def process_radial_locations(energies, radii, currents,
                                                                                                                                    num_samples))
                         result_name = "histogram_results-{}-{}-{}.png".format(radius, energy, I * 1e-3)
                         plt.savefig(os.path.join(data_dir, result_name))
+                        plt.close()
 
                     # --- Get average radial location ---
                     radial_probabilities = radial_numbers / np.sum(radial_numbers)
@@ -209,7 +233,7 @@ def process_radial_locations(energies, radii, currents,
                 # --- Plot mean confinement times ---
                 plt.figure()
                 for k, energy in enumerate(energies):
-                    plt.plot(radii, mean_confinement_times[:, j, k] / np.max(mean_confinement_times[:, j, k]), label="energy-{}eV".format(energy))
+                    plt.plot(radii, mean_confinement_times[:, j, k], label="energy-{}eV".format(energy))
                 plt.xscale('log')
                 plt.yscale('log')
                 plt.xlabel('Radius [m]')
@@ -220,9 +244,9 @@ def process_radial_locations(energies, radii, currents,
 
 
 if __name__ == "__main__":
-    radius = [1.0, 10.0]
+    radius = [0.1, 1.0, 5.0, 10.0]
     current = [1e3, 1e4, 1e5]
     energies = [1.0, 10.0, 100.0, 1000.0]
     process_radial_locations(energies, radius, current,
-                             plot_velocity_histograms=True, plot_normalised_radii=True, plot_mean_confinement=True)
+                             plot_velocity_histograms=False, plot_normalised_radii=False, plot_mean_confinement=False)
 
