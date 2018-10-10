@@ -42,12 +42,12 @@ def generate_sim_results(number_densities, T):
                 p_1 = ChargedParticle(6.64424e-27, 2 * PhysicalConstants.electron_charge)
                 energy = 3.5e6 * PhysicalConstants.electron_charge
             elif "reactant" == name:
-                p_1 = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
+                p_1 = ChargedParticle(5.0064125184e-27, PhysicalConstants.electron_charge)
                 energy = 50e3 * PhysicalConstants.electron_charge
             else:
                 raise ValueError()
             beam_velocity = np.sqrt(2 * energy / p_1.m)
-            p_2 = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
+            p_2 = ChargedParticle(5.0064125184e-27, PhysicalConstants.electron_charge)
 
             # Instantiate simulation
             w_2 = int(n / N)

@@ -49,18 +49,19 @@ def generate_sim_results(number_densities, T, plot_individual_sims=False):
                 p_1 = ChargedParticle(6.64424e-27, 2 * PhysicalConstants.electron_charge)
                 energy = 3.5e6 * PhysicalConstants.electron_charge
             elif "reactant" == name:
-                p_1 = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
+                p_1 = ChargedParticle(5.0064125184e-27, PhysicalConstants.electron_charge)
                 energy = 50e3 * PhysicalConstants.electron_charge
             else:
                 raise ValueError()
             beam_velocity = np.sqrt(2 * energy / p_1.m)
-            deuterium = ChargedParticle(2.014102 * UnitConversions.amu_to_kg, PhysicalConstants.electron_charge)
+            deuterium = ChargedParticle(5.0064125184e-27, PhysicalConstants.electron_charge)
             electron = ChargedParticle(9.014e-31, -PhysicalConstants.electron_charge)
+            Z = 2
 
             # Instantiate simulation
             w_b = int(n / N)
             particle_numbers = np.asarray([N, N, N])
-            sim = NanbuCollisionModel(particle_numbers, np.asarray([p_1, deuterium, electron]), np.asarray([w_1, w_b, w_b]), 
+            sim = NanbuCollisionModel(particle_numbers, np.asarray([p_1, deuterium, electron]), np.asarray([w_1, w_b, Z * w_b]),
                                       coulomb_logarithm=10.0, frozen_species=np.asarray([False, False, False]))
 
             # Set up velocities
