@@ -19,7 +19,7 @@ def get_maxwellian_power_balance():
     Function to get a parameter scan of the power balance for different fusion 
     reactions
     """
-    T = np.logspace(0, 3, 200)
+    T = np.logspace(0, 2, 200)
     rho = np.logspace(-5, 0, 200)
 
     # Generate calculators
@@ -56,15 +56,18 @@ def get_maxwellian_power_balance():
     dt_balance[dt_balance < power_threshold] = power_threshold
 
     # Plot power balance results
-    fig, ax = plt.subplots(2)
+    fig, ax = plt.subplots(2, sharex=True)
 
     # Plot Power Production
     im = ax[0].contourf(np.log10(TEMP), np.log10(N_dd), np.log10(dd_balance), 100)
     fig.colorbar(im, ax=ax[0])
-    ax[0].set_title("DD Power Balance (MWm-3)")
+    ax[0].set_ylabel("Number density [$m^3$]")
+    ax[0].set_title("DD Power Balance [$MWm-3$]")
     im = ax[1].contourf(np.log10(TEMP), np.log10(N_dt), np.log10(dt_balance), 100)
     fig.colorbar(im, ax=ax[1])
-    ax[1].set_title("DT Power Balance (MWm-3)")
+    ax[1].set_title("DT Power Balance [$MWm-3$]")
+    ax[1].set_ylabel("Number density [$m^3$]")
+    ax[1].set_xlabel("Temperature [$keV$]")
 
     fig.suptitle("Power balance for different fusion reactions")
     plt.show()
