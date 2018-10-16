@@ -97,6 +97,7 @@ def generate_sim_results(number_densities, reactant_name, plot_individual_sims=F
             # Instantiate simulation
             w_b = long(n / N)
             w_1 = long(n_1 / N)
+            w_1 = w_1 if w_1 > 0 else long(1)
             print(w_1, w_b)
             particle_numbers = np.asarray([N, N, N])
             sim = NanbuCollisionModel(particle_numbers, np.asarray([p_1, p_2, electron]), np.asarray([w_1, w_b, Z * w_b]),
@@ -272,6 +273,6 @@ def generate_sim_results(number_densities, reactant_name, plot_individual_sims=F
 
 if __name__ == '__main__':
     number_densities = np.logspace(15, 25, 4)
-    reactant_name = "pB"
+    reactant_name = "DT"
     generate_sim_results(number_densities, reactant_name, plot_individual_sims=False)
 

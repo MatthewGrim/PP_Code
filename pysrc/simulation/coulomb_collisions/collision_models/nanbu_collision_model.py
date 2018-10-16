@@ -34,6 +34,7 @@ class NanbuCollisionModel(object):
             assert isinstance(particles, np.ndarray)
             assert isinstance(particle_weightings, np.ndarray)
             assert number_densities.shape == particles.shape == particle_weightings.shape
+            assert np.all(particle_weightings > 0)
             assert len(number_densities.shape) == 1
             for i, n in enumerate(number_densities):
                 assert n == number_densities[0]
@@ -52,6 +53,7 @@ class NanbuCollisionModel(object):
         elif isinstance(number_densities, int):
             assert isinstance(particles, ChargedParticle)
             assert isinstance(particle_weightings, int)
+            assert particle_weightings > 0
             assert frozen_species is None or isinstance(frozen_species, bool)
             
             # Set particle variables
@@ -199,8 +201,8 @@ class NanbuCollisionModel(object):
         w_A = self.__particle_weights[idx_A]
         w_B = self.__particle_weights[idx_B]
         w_max = float(max(w_A, w_B))
-        collision_threshold_A = w_B / w_max if w_max > 0 else 1.0
-        collision_threshold_B = w_A / w_max if w_max > 0 else 1.0
+        collision_threshold_A = w_B / w_max
+        collision_threshold_B = w_A / w_max
         Z_A = np.random.uniform(0, 1, size=(g_comp.shape[0], 1)) < collision_threshold_A 
         Z_B = np.random.uniform(0, 1, size=(g_comp.shape[0], 1)) < collision_threshold_B 
 
