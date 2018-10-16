@@ -100,7 +100,7 @@ def generate_sim_results(number_densities, reactant_name, plot_individual_sims=F
             print(w_1, w_b)
             particle_numbers = np.asarray([N, N, N])
             sim = NanbuCollisionModel(particle_numbers, np.asarray([p_1, p_2, electron]), np.asarray([w_1, w_b, Z * w_b]),
-                                      coulomb_logarithm=10.0, frozen_species=np.asarray([False, False, False]), include_self_collisions=False)
+                                      coulomb_logarithm=10.0, frozen_species=np.asarray([False, False, False]), include_self_collisions=True)
 
             # Set up velocities
             velocities = np.zeros((np.sum(particle_numbers), 3))
@@ -118,7 +118,7 @@ def generate_sim_results(number_densities, reactant_name, plot_individual_sims=F
             # Get approximate time scale
             impact_parameter_ratio = 1.0    # Is not necessary for this analysis
             tau = sys.float_info.max
-            for background_particle in [p_2, electron]:
+            for background_particle in [p_2]:
                 reactant_collision = CoulombCollision(p_1, background_particle,
                                                       impact_parameter_ratio,
                                                       beam_velocity)

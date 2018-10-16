@@ -199,8 +199,8 @@ class NanbuCollisionModel(object):
         w_A = self.__particle_weights[idx_A]
         w_B = self.__particle_weights[idx_B]
         w_max = float(max(w_A, w_B))
-        collision_threshold_A = w_B / w_max
-        collision_threshold_B = w_A / w_max
+        collision_threshold_A = w_B / w_max if w_max > 0 else 1.0
+        collision_threshold_B = w_A / w_max if w_max > 0 else 1.0
         Z_A = np.random.uniform(0, 1, size=(g_comp.shape[0], 1)) < collision_threshold_A 
         Z_B = np.random.uniform(0, 1, size=(g_comp.shape[0], 1)) < collision_threshold_B 
 
