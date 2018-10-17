@@ -29,6 +29,11 @@ def run_sim(params):
         dB_dt = B / I * dI_dt
         return -dB_dt
 
+    def b_field_func(x):
+        B = b_field.b_field(x / radius)
+        B *= I / radius
+        return B
+
     X = particle.position
     V = particle.velocity
     Q = np.asarray([particle.charge])
@@ -50,9 +55,13 @@ def run_sim(params):
             velocities[i, :, :] = V
             continue
 
+        # Get fields
+        E = e_field(X)
+        B = b_field_func(X)
+
         dt = times[i] - times[i - 1]
 
-        x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
+        x, v = boris_solver_internal(E, B, X, V, Q, M, dt)
 
         if np.any(x[0, :] < -domain_size) or np.any(x[0, :] > domain_size):
             if print_output:
@@ -107,10 +116,9 @@ def run_parallel_sims(params):
     loop_pts = 200
     domain_pts = 130
     loop_offset = 1.25
-    dom_size = 1.1 * loop_offset * radius
-    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
-    file_path = os.path.join("..", "mesh_generation", "data", "radius-{}m".format(radius),
-                             "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
+    dom_size = 1.1 * loop_offset * 1.0
+    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(1.0 * to_kA, 1.0, loop_offset, domain_pts, loop_pts, dom_size)
+    file_path = os.path.join("..", "mesh_generation", "data", "radius-1.0m", "current-0.001kA", "domres-{}".format(domain_pts), file_name)
     b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
 
     seed = batch_num
@@ -228,10 +236,10 @@ def get_particle_count(radial_bins, velocity_bins, radial_positions, v_x, v_y, v
 
 
 def get_radial_distributions():
-    radii = [1.0]
-    electron_energies = [1.0, 10.0, 100.0, 1000.0]
-    I = [1e5]
-    pool = mp.Pool(processes=6)
+    radii = [0.1, 1.0, 5.0, 10.0]
+    electron_energies = [2.0, 5.0, 20.0, 50.0, 200.0, 500.0]
+    I = [2e3, 4e3, 2e4, 5e4]
+    pool = mp.Pool(processes=2)
     args = []
     for radius in radii:
         for current in I:
