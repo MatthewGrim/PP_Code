@@ -12,18 +12,25 @@ import os
 
 
 def fit_data():
+    # Parameter space of full study
     radius = np.asarray([0.1, 1.0, 5.0, 10.0])
     current = np.asarray([1e3, 1e4, 1e5])
     energies = np.asarray([1.0, 10.0, 100.0, 1000.0])
-    res_dir = "results"
-    file_name = "mean_confinement_times.txt"
-    file = os.path.join(res_dir, file_name)
-    mean_confinement_times = np.loadtxt(file)
 
+    # Load mean confinement times
+    res_dir = "results"
+    mean_confinement_times = np.zeros((radius.shape[0], current.shape[0], energies.shape[0]))
+    for i, r in enumerate(radius):
+        file_name = "mean_confinement_times_{}m".format(r)
+        file = os.path.join(res_dir, file_name)
+        mean_confinement_times[i, :, :] = np.loadtxt(file)
+
+    # Define approximate function according to theory
     def func(X, a, b, c, d):
         I, R, K = X
         return a * I ** b * R ** c * K ** d
 
+    # Set data up as a 1D array for use with scipy optimize
     radii_unraveled = list()
     currents_unraveled = list()
     energies_unraveled = list()
@@ -40,8 +47,9 @@ def fit_data():
     energies_unraveled = np.asarray(energies_unraveled)
     confinement_times = np.asarray(confinement_times)
 
+    # Get curve fit and error
     X = [currents_unraveled, radii_unraveled, energies_unraveled]
-    p0 = 5e-7, 0.5, 1.5, -0.75
+    p0 = 3.7e-7, 0.5, 1.5, -0.75
     curve = optimize.curve_fit(func, X, confinement_times, p0)
     print("Parameters: {}".format(curve[0]))
     print("Covariance: {}".format(curve[1]))
