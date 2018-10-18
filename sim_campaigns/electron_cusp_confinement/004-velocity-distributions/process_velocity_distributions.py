@@ -287,6 +287,8 @@ def process_radial_locations(energies, radii, currents,
                 plt.tight_layout()
                 plt.clf()
 
+        for i, radius in enumerate(radii):
+            np.savetxt(os.path.join(output_dir, 'mean_confinement_times_{}m'.format(radius)), mean_confinement_times[i, :, :])
 
 if __name__ == "__main__":
     radius = [0.1, 1.0, 5.0, 10.0]
