@@ -115,7 +115,7 @@ def process_radial_locations(energies, radii, currents, number_densities,
                         # --- Print number of samples ---
                         num_samples = final_state_results[1]
                         escaped_ratio = final_state_results[0] / final_state_results[1]
-                        print("Number of samples: {}".format(np.sum(v_x_numbers) * 1e-6))
+                        print("Number of samples for {}m {}A {}eV {:.2E}: {}".format(radius, I, energy, n, np.sum(v_x_numbers) * 1e-6))
 
                         # --- Get mean confinement time ---
                         mean_confinement_time = confinement_time_sum / num_samples
@@ -169,9 +169,9 @@ def process_radial_locations(energies, radii, currents, number_densities,
 
 if __name__ == "__main__":
     radius = [1.0]
-    current = [1e5]
-    energies = [10.0, 100.0]
-    number_densities = [0.0, 1e4, 1e8, 1e12]
+    current = [1e4, 1e5]
+    energies = [100.0]
+    number_densities = [0.0, 1e3, 1e6, 1e9, 1e12]
     process_radial_locations(energies, radius, current, number_densities,
                              plot_velocity_histograms=True)
 

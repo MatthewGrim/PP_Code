@@ -234,12 +234,14 @@ def process_radial_locations(energies, radii, currents,
             for j, current in enumerate(currents):
                 plt.figure()
                 for k, energy in enumerate(energies):
-                    gummersall_confinement = 5e-7 * np.sqrt(current) * theoretical_radii ** 1.5 / energy ** 0.75 
+                    curve_fit = 7.96909078e-06 * current ** 2.14861469e-01 * theoretical_radii ** 1.00177491e+00 * energy ** -3.85371740e-01
+                    gummersall_confinement = 5e-7 * np.sqrt(current) * theoretical_radii ** 1.5 / energy ** 0.75
                     theoretical_confinement = 3.7e-7 * np.sqrt(current) * theoretical_radii / energy ** 0.75
 
                     plt.scatter(radii, mean_confinement_times[:, j, k], label="{}eV".format(energy))
                     # p = plt.loglog(theoretical_radii, gummersall_confinement, linestyle="-.")
-                    plt.loglog(theoretical_radii, theoretical_confinement, linestyle="--")
+                    # plt.loglog(theoretical_radii, theoretical_confinement, linestyle="--")
+                    plt.loglog(theoretical_radii, curve_fit, linestyle=":")
                 plt.xlabel('Radius [m]')
                 plt.ylabel('Normalised mean confinement time')
                 plt.title('Mean confinement times for {}kA device'.format(current))
@@ -252,13 +254,15 @@ def process_radial_locations(energies, radii, currents,
             theoretical_currents = np.logspace(np.log10(currents[0]), np.log10(currents[-1]), 100)
             for k, energy in enumerate(energies):
                 plt.figure()
-                for i, radius in enumerate(radii): 
+                for i, radius in enumerate(radii):
+                    curve_fit = 7.96909078e-06 * theoretical_currents ** 2.14861469e-01 * radius ** 1.00177491e+00 * energy ** -3.85371740e-01
                     gummersall_confinement = 5e-7 * np.sqrt(theoretical_currents) * radius ** 1.5 / energy ** 0.75
                     theoretical_confinement = 3.7e-7 * np.sqrt(theoretical_currents) * radius / energy ** 0.75
 
                     plt.scatter(currents, mean_confinement_times[i, :, k], label="{}m".format(radius))
                     # p = plt.loglog(theoretical_currents, gummersall_confinement, linestyle="-.")
-                    plt.semilogx(theoretical_currents, theoretical_confinement, linestyle="--")
+                    # plt.semilogx(theoretical_currents, theoretical_confinement, linestyle="--")
+                    plt.semilogx(theoretical_currents, curve_fit, linestyle=":")
                 plt.ylim([np.min(mean_confinement_times[:, :, k]), np.max(mean_confinement_times[:, :, k])])
                 plt.xlabel('Current [A]')
                 plt.ylabel('Mean confinement time [s]')
@@ -272,13 +276,15 @@ def process_radial_locations(energies, radii, currents,
             theoretical_energies = np.logspace(np.log10(energies[0]), np.log10(energies[-1]), 100)
             for i, radius in enumerate(radii):
                 plt.figure()
-                for j, current in enumerate(currents): 
+                for j, current in enumerate(currents):
+                    curve_fit = 7.96909078e-06 * current **  2.14861469e-01 * radius ** 1.00177491e+00 * theoretical_energies ** -3.85371740e-01
                     gummersall_confinement = 5e-7 * np.sqrt(current) * radius ** 1.5 / theoretical_energies ** 0.75
                     theoretical_confinement = 3.7e-7 * np.sqrt(current) * radius / theoretical_energies ** 0.75
 
                     plt.scatter(energies, mean_confinement_times[i, j, :], label="{}kA".format(current * 1e-3))
                     # p = plt.loglog(theoretical_energies, gummersall_confinement, linestyle="-.")
-                    plt.loglog(theoretical_energies, theoretical_confinement, linestyle="--")
+                    # plt.loglog(theoretical_energies, theoretical_confinement, linestyle="--")
+                    plt.loglog(theoretical_energies, curve_fit, linestyle=":")
                 plt.xlabel('energy [eV]')
                 plt.ylabel('Mean confinement time [s]')
                 plt.title('Mean confinement times for a {}m device'.format(radius))
