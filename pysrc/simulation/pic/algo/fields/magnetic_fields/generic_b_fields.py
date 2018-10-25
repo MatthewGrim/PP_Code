@@ -13,7 +13,7 @@ from plasma_physics.pysrc.simulation.pic.algo.geometry.vector_ops import cross, 
 
 
 class CurrentLoop(object):
-    mu_0 = 1.256e-6
+    mu_0 = 1.25663706e-6
 
     def __init__(self, I, radius, centre, normal, num_pts):
         """"
@@ -39,7 +39,7 @@ class CurrentLoop(object):
 
         # Discretise the loop by angle
         self.d_theta = 2.0 * np.pi / num_pts
-        self.theta = np.linspace(self.d_theta, 2 * np.pi - self.d_theta, num_pts)
+        self.theta = np.linspace(0.0, 2 * np.pi - self.d_theta, num_pts)
 
         # Find an arbitrary parallel unit vector
         unit_vector = np.asarray([1.0, 1.0, 1.0])
@@ -197,7 +197,7 @@ def radial_locations():
 
 
 def field_along_axis(offset=0.0):
-    I = 1e6
+    I = 1e4
     radius = 0.15
     loop_pts = 20
     loop = CurrentLoop(I, radius, np.asarray([0.0, 0.0, offset]), np.asarray([0.0, 0.0, 1.0]), loop_pts)
