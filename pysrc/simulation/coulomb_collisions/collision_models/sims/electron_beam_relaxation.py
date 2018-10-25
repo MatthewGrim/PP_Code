@@ -292,8 +292,8 @@ if __name__ == '__main__':
     # sim_type = "Abe"
     sim_type = "Nanbu"
 
-    # _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
-    # _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
+    _, _ = run_electron_beam_into_stationary_target_sim(sim_type)
+    _, _ = run_electon_beam_into_electron_gas_sim(sim_type)
     if sim_type == "Nanbu":
         _, _ = run_electon_beam_into_argon_gas_sim(sim_type)
 

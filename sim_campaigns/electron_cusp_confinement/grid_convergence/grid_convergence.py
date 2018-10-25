@@ -15,6 +15,8 @@ import scipy
 from plasma_physics.pysrc.simulation.pic.algo.fields.magnetic_fields.generic_b_fields import *
 from plasma_physics.pysrc.simulation.pic.algo.particle_pusher.boris_solver import *
 from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import PICParticle
+from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
+
 
 def run_sim(field, particle, dt_factor):
     # There is no E field in the simulations
@@ -26,8 +28,8 @@ def run_sim(field, particle, dt_factor):
     Q = np.asarray([particle.charge])
     M = np.asarray([particle.mass])
 
-    vel_magnitude = np.sqrt(np.sum(V * V))
-    dt = dt_factor * radius / vel_magnitude
+    # vel_magnitude = np.sqrt(np.sum(V * V))
+    # dt = dt_factor * radius / vel_magnitude
 
     dt = 1e-9 * radius
     final_time = 1e5 * dt
@@ -47,7 +49,7 @@ def run_sim(field, particle, dt_factor):
         dt = times[i] - times[i - 1]
 
         try:
-            x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
+            x, v = boris_solver(e_field, field.b_field, X, V, Q, M, dt)
         except ValueError:
             print("PARTICLE ESCAPED! - {}, {}".format(times[i], X[0]))
             break
@@ -91,7 +93,7 @@ if __name__ == '__main__':
         loop_offset = 1.25
         dom_size = 1.1 * loop_offset * radius
         file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
-        file_path = os.path.join("..", "mesh_generation", "radius-{}m".format(radius), "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
+        file_path = os.path.join("..", "mesh_generation", "data", "radius-{}m".format(radius), "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
         b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
     else:
         I = 1e4
@@ -111,12 +113,13 @@ if __name__ == '__main__':
     x_results = []
     y_results = []
     z_results = []
-    dt_factors = [100.0, 10.0, 1.0]
+    dt_factors = [100.0, 10.0, 1.0, 0.1, 0.01]
+    electron_energy = 1000.0
+    max_vel = np.sqrt(2.0 * electron_energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
     for dt in dt_factors:
         seed = 1
         np.random.seed(seed)
         # Define charge particle
-        max_vel = 1e6
         vel = np.random.uniform(low=-1.0, high=1.0, size=(3, )) * max_vel
         particle = PICParticle(9.1e-31, 1.6e-19, np.asarray([0.0, 0.0, 0.0]), vel)
 

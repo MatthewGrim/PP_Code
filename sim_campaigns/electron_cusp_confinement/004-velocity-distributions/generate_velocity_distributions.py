@@ -18,6 +18,52 @@ from plasma_physics.pysrc.simulation.pic.data.particles.charged_particle import 
 from plasma_physics.pysrc.simulation.pic.algo.geometry.vector_ops import *
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
+def boris_solver_internal(E, B, X, V, Q, M, dt):
+    """
+    Function to update the positon of a set of particles in an electromagnetic field over the time dt
+
+    :param E: 3D E field at time t
+    :param B: 3D B field at time t
+    :param X: position of the particles in the simulation domain
+    :param V: velocities of the particles in the simulation domain
+    :param Q: charges of the particles in the simulation domain
+    ;param M: masses of the particles in the simulation domain
+    :return:
+    """
+    assert isinstance(X, np.ndarray) and X.shape[1] == 3
+    assert isinstance(V, np.ndarray) and V.shape[1] == 3
+    assert X.shape[0] == V.shape[0] == Q.shape[0] == M.shape[0]
+    assert isinstance(dt, float)
+
+    # Calculate v minus
+    E_field_offset = Q * E / M * dt / 2
+    v_minus = V + E_field_offset
+
+    # Calculate v prime
+    t = Q * B / M * 0.5 * dt
+    v_prime = np.zeros(v_minus.shape)
+    for i, v in enumerate(v_prime[:, 0]):
+        v_prime[i, :] = v_minus[i, :] + cross(v_minus[i, :], t[i, :])
+
+    # Calculate s
+    s = np.zeros(t.shape)
+    for i, _ in enumerate(t[:, 0]):
+        s[i, :] = 2 * t[i, :]
+        s[i, :] /= 1 + magnitude(t[i, :]) ** 2
+
+    # Calculate v_plus
+    v_plus = np.zeros(v_minus.shape)
+    for i, v in enumerate(v_prime[:, 0]):
+        v_plus[i, :] = v_minus[i, :] + cross(v_prime[i, :], s[i, :])
+
+    # Calculate new velocity
+    V_plus = v_plus + E_field_offset
+
+    # Integrate to get new positions
+    X_plus = X + V_plus * dt
+
+    return X_plus, V_plus
+
 
 def run_sim(params):
     b_field, particle, radius, domain_size, I, dI_dt = params
@@ -28,6 +74,11 @@ def run_sim(params):
         B = b_field.b_field(x)
         dB_dt = B / I * dI_dt
         return -dB_dt
+
+    def b_field_func(x):
+        B = b_field.b_field(x / radius)
+        B *= I / radius
+        return B
 
     X = particle.position
     V = particle.velocity
@@ -50,9 +101,13 @@ def run_sim(params):
             velocities[i, :, :] = V
             continue
 
+        # Get fields
+        E = e_field(X)
+        B = b_field_func(X)
+
         dt = times[i] - times[i - 1]
 
-        x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
+        x, v = boris_solver_internal(E, B, X, V, Q, M, dt)
 
         if np.any(x[0, :] < -domain_size) or np.any(x[0, :] > domain_size):
             if print_output:
@@ -107,17 +162,16 @@ def run_parallel_sims(params):
     loop_pts = 200
     domain_pts = 130
     loop_offset = 1.25
-    dom_size = 1.1 * loop_offset * radius
-    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
-    file_path = os.path.join("..", "mesh_generation", "data", "radius-{}m".format(radius),
-                             "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
+    dom_size = 1.1 * loop_offset * 1.0
+    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(1.0 * to_kA, 1.0, loop_offset, domain_pts, loop_pts, dom_size)
+    file_path = os.path.join("..", "mesh_generation", "data", "radius-1.0m", "current-0.001kA", "domres-{}".format(domain_pts), file_name)
     b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
 
     seed = batch_num
     np.random.seed(seed)
 
     # Run simulations
-    num_radial_bins = 100
+    num_radial_bins = 200
     num_velocity_bins = 250
     total_particle_position_count = np.zeros((num_radial_bins,))
     total_particle_velocity_count_x = np.zeros((num_radial_bins, num_velocity_bins - 1))
@@ -228,22 +282,25 @@ def get_particle_count(radial_bins, velocity_bins, radial_positions, v_x, v_y, v
 
 
 def get_radial_distributions():
-    radii = [1.0]
-    electron_energies = [1.0, 10.0, 100.0, 1000.0]
-    I = [1e5]
-    pool = mp.Pool(processes=6)
+    radii = [0.1, 1.0, 5.0, 10.0]
+    electron_energies = [2.0, 5.0, 20.0, 50.0, 200.0, 500.0]
+    I = [2e3, 4e3, 2e4, 5e4]
+    pool = mp.Pool(processes=2)
     args = []
     for radius in radii:
         for current in I:
             for electron_energy in electron_energies:
                 if electron_energy <= 10.0:
-                    batch_numbers = 2
+                    batch_numbers_begin = 0
+                    batch_numbers_end = 2
                 elif electron_energy <= 100.0:
-                    batch_numbers = 4
+                    batch_numbers_begin = 0
+                    batch_numbers_end = 4
                 else:
-                    batch_numbers = 1
+                    batch_numbers_begin = 0
+                    batch_numbers_end = 8
 
-                for batch_num in range(batch_numbers):
+                for batch_num in range(batch_numbers_begin, batch_numbers_end):
                     args.append((radius, electron_energy, current, batch_num + 1))
     pool.map(run_parallel_sims, args)
     pool.close()

@@ -20,19 +20,23 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
 def run_sim(params):
-    b_field, particle, radius, domain_size, I, dI_dt = params
+    b_field, particle, radius, domain_size, I, n = params
     print_output = False
 
-    # There is no E field in the simulations
     def e_field(x):
         r = np.sqrt(np.sum(x[0] ** 2))
-        n = 5.5e12
         Q = n * PhysicalConstants.electron_charge * 4.0 / 3.0 * np.pi * radius ** 3
         k = 1 / (4 * np.pi * PhysicalConstants.epsilon_0)
         if r < radius:
             return k * Q / radius ** 3 * x[0]
         else:
-            return k * Q / r ** 3 * x[0]
+            r_unit = normalise(x[0])
+            return k * Q / r ** 2 * r_unit
+
+    def b_field_func(x):
+        B = b_field.b_field(x / radius)
+        B *= I / radius
+        return B
 
     X = particle.position
     V = particle.velocity
@@ -40,8 +44,8 @@ def run_sim(params):
     M = np.asarray([particle.mass])
 
     # Set timestep according to Gummersall approximation
-    dt = 1e-10 * radius
-    final_time = 1e6 * dt
+    dt = 1e-11 * radius
+    final_time = 1e7 * dt
 
     num_steps = int(final_time / dt)
     times = np.linspace(0.0, final_time, num_steps)
@@ -57,7 +61,7 @@ def run_sim(params):
 
         dt = times[i] - times[i - 1]
 
-        x, v = boris_solver(e_field, b_field.b_field, X, V, Q, M, dt)
+        x, v = boris_solver(e_field, b_field_func, X, V, Q, M, dt)
 
         if np.any(x[0, :] < -domain_size) or np.any(x[0, :] > domain_size):
             if print_output:
@@ -89,8 +93,7 @@ def run_sim(params):
 
 
 def run_parallel_sims(params):
-    radius, electron_energy, I, batch_num = params
-    dI_dt = 0.0
+    radius, electron_energy, I, n, batch_num = params
     to_kA = 1e-3
     use_cartesian_reference_frame = False
 
@@ -106,24 +109,23 @@ def run_parallel_sims(params):
         os.makedirs(output_dir)
 
     # Get process name
-    process_name = "electron_energy-{}eV-current-{}kA-batch-{}".format(electron_energy, I * to_kA, batch_num)
+    process_name = "current-{}-radius-{}-energy-{}-n-{:.2E}-batch-{}".format(I, radius, electron_energy, n, batch_num)
     print("Starting process: {}".format(process_name))
 
     # Generate Polywell field
     loop_pts = 200
     domain_pts = 130
     loop_offset = 1.25
-    dom_size = 1.1 * loop_offset * radius
-    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(I * to_kA, radius, loop_offset, domain_pts, loop_pts, dom_size)
-    file_path = os.path.join("..", "mesh_generation", "data", "radius-{}m".format(radius),
-                             "current-{}kA".format(I * to_kA), "domres-{}".format(domain_pts), file_name)
+    dom_size = 1.1 * loop_offset * 1.0
+    file_name = "b_field_{}_{}_{}_{}_{}_{}".format(1.0 * to_kA, 1.0, loop_offset, domain_pts, loop_pts, dom_size)
+    file_path = os.path.join("..", "mesh_generation", "data", "radius-1.0m", "current-0.001kA", "domres-{}".format(domain_pts), file_name)
     b_field = InterpolatedBField(file_path, dom_pts_idx=6, dom_size_idx=8)
 
     seed = batch_num
     np.random.seed(seed)
 
     # Run simulations
-    num_radial_bins = 100
+    num_radial_bins = 200
     num_velocity_bins = 250
     total_particle_position_count = np.zeros((num_radial_bins,))
     total_particle_velocity_count_x = np.zeros((num_radial_bins, num_velocity_bins - 1))
@@ -132,7 +134,7 @@ def run_parallel_sims(params):
     radial_bins = np.linspace(0.0, np.sqrt(3) * loop_offset * radius, num_radial_bins)
     vel = np.sqrt(2.0 * electron_energy * PhysicalConstants.electron_charge / PhysicalConstants.electron_mass)
     velocity_bins = np.linspace(-vel, vel, num_velocity_bins)
-    num_sims = 420
+    num_sims = 400
     final_positions = []
     for i in range(num_sims):
         # Define particle velocity and 100eV charge particle
@@ -143,7 +145,7 @@ def run_parallel_sims(params):
         particle = PICParticle(9.1e-31, 1.6e-19,
                                np.random.uniform(-3.0 * radius / 16.0, 3.0 * radius / 16.0, size=(3,)), velocity)
 
-        t, x, y, z, v_x, v_y, v_z, final_idx = run_sim((b_field, particle, radius, loop_offset * radius, I, dI_dt))
+        t, x, y, z, v_x, v_y, v_z, final_idx = run_sim((b_field, particle, radius, loop_offset * radius, I, n))
 
         # Add results_remote_run_15_08 to list
         escaped = False if final_idx is None else True
@@ -151,11 +153,6 @@ def run_parallel_sims(params):
 
         # Save final position output
         final_positions.append([t[final_idx], x[final_idx], y[final_idx], z[final_idx], escaped])
-        #
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111, projection='3d')
-        # ax.plot(x, y, z)
-        # plt.show()
 
         # Change coordinate system
         radial_position = np.sqrt(x[:final_idx] ** 2 + y[:final_idx] ** 2 + z[:final_idx] ** 2)
@@ -196,9 +193,9 @@ def run_parallel_sims(params):
         total_particle_velocity_count_z += particle_velocity_count[2, :, :]
 
     # Save results_remote_run_15_08 to file
-    position_output_path = os.path.join(output_dir, "radial_distribution-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, electron_energy, batch_num))
-    velocity_output_path = os.path.join(output_dir, "velocity_distribution-current-{}-radius-{}-energy-{}-batch-{}".format(I, radius, electron_energy, batch_num))
-    final_state_output_path = os.path.join(output_dir, "final_state-current-{}-radius-{}-energy-{}-batch-{}.txt".format(I, radius, electron_energy, batch_num))
+    position_output_path = os.path.join(output_dir, "radial_distribution-{}.txt".format(process_name))
+    velocity_output_path = os.path.join(output_dir, "velocity_distribution-{}".format(process_name))
+    final_state_output_path = os.path.join(output_dir, "final_state-current-{}.txt".format(process_name))
     np.savetxt(position_output_path, np.stack((radial_bins, total_particle_position_count)))
     np.savetxt("{}_x.txt".format(velocity_output_path), total_particle_velocity_count_x)
     np.savetxt("{}_y.txt".format(velocity_output_path), total_particle_velocity_count_y)
@@ -239,26 +236,26 @@ def get_particle_count(radial_bins, velocity_bins, radial_positions, v_x, v_y, v
 
 
 def get_radial_distributions():
-    radii = [1.0]
-    electron_energies = [10.0, 100.0, 1000.0]
-    I = [1e4]
-    pool = mp.Pool(processes=3)
+    radii = [1.0, 5.0, 10.0]
+    electron_energies = [10.0, 100.0]
+    I = [1e4, 1e5]
+    number_densities = [0.0, 1e3, 1e6, 1e9, 1e12]
+    pool = mp.Pool(processes=4)
     args = []
     for radius in radii:
         for current in I:
             for electron_energy in electron_energies:
-                if electron_energy <= 10.0:
-                    batch_numbers = 2
-                elif electron_energy <= 100.0:
-                    batch_numbers = 4
-                else:
-                    batch_numbers = 1
-
-                for batch_num in range(batch_numbers):
-                    args.append((radius, electron_energy, current, batch_num + 1))
+                for n in number_densities:
+                    batch_numbers_begin = 0
+                    batch_numbers_end = 3
+                    
+                    for batch_num in range(batch_numbers_begin, batch_numbers_end):
+                        args.append((radius, electron_energy, current, n, batch_num + 1))
     pool.map(run_parallel_sims, args)
     pool.close()
     pool.join()
+
+    # run_parallel_sims([1.0, 100.0, 1e4, 1e4, 1])
 
 
 if __name__ == '__main__':

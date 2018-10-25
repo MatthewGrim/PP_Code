@@ -34,6 +34,7 @@ class NanbuCollisionModel(object):
             assert isinstance(particles, np.ndarray)
             assert isinstance(particle_weightings, np.ndarray)
             assert number_densities.shape == particles.shape == particle_weightings.shape
+            assert np.all(particle_weightings > 0)
             assert len(number_densities.shape) == 1
             for i, n in enumerate(number_densities):
                 assert n == number_densities[0]
@@ -52,6 +53,7 @@ class NanbuCollisionModel(object):
         elif isinstance(number_densities, int):
             assert isinstance(particles, ChargedParticle)
             assert isinstance(particle_weightings, int)
+            assert particle_weightings > 0
             assert frozen_species is None or isinstance(frozen_species, bool)
             
             # Set particle variables
@@ -78,7 +80,8 @@ class NanbuCollisionModel(object):
         self.temperature = None
 
         # Generator interpolator for A
-        data_file = os.path.join("/home/rohan/Code/plasma_physics/pysrc/simulation/coulomb_collisions/collision_models", "data", "A_interpolation_values.txt")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        data_file = os.path.join(dir_path, "data", "A_interpolation_values.txt")
         self.__A_data = np.loadtxt(data_file)
         s_data = self.__A_data[0, :]
         A_data = self.__A_data[1, :]
