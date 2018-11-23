@@ -52,8 +52,8 @@ def get_power_balance():
     n_dt = N_dt + n_electrons
 
     # Calculate power losses - according to Gummersall thesis values
-    P_cusp_dd = 5.38e-13 * PhysicalConstants.epsilon_0 * WELL_DEPTH ** 2.75 / np.sqrt(current * radius ** 5) / PhysicalConstants.electron_charge
-    P_cusp_dt = 5.38e-13 * PhysicalConstants.epsilon_0 * WELL_DEPTH ** 2.75 / np.sqrt(current * radius ** 5) / PhysicalConstants.electron_charge
+    P_cusp_dd = 5.38e-13 * PhysicalConstants.epsilon_0 * WELL_DEPTH ** 2.75 / np.sqrt(current * radius ** 7) / PhysicalConstants.electron_charge
+    P_cusp_dt = 5.38e-13 * PhysicalConstants.epsilon_0 * WELL_DEPTH ** 2.75 / np.sqrt(current * radius ** 7) / PhysicalConstants.electron_charge
 
     # Get power balances - set power to be 1 if it is negative. We do not care about these points 
     power_threshold = 1.0
