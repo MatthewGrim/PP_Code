@@ -18,7 +18,7 @@ def process_radial_locations(energies, radii, currents,
                              plot_normalised_radii=True,
                              plot_mean_confinement=True):
     # Loop through simulations
-    output_dirs = ["results"]
+    output_dirs = ["results_long"]
     for output_dir in output_dirs:
         mean_confinement_times = np.zeros((len(radii), len(currents), len(energies)))
         for i, radius in enumerate(radii):
@@ -241,7 +241,7 @@ def process_radial_locations(energies, radii, currents,
                     plt.scatter(radii, mean_confinement_times[:, j, k], label="{}eV".format(energy))
                     # p = plt.loglog(theoretical_radii, gummersall_confinement, linestyle="-.")
                     # plt.loglog(theoretical_radii, theoretical_confinement, linestyle="--")
-                    plt.loglog(theoretical_radii, curve_fit, linestyle=":")
+                    plt.loglog(theoretical_radii, theoretical_confinement, linestyle=":")
                 plt.xlabel('Radius [m]')
                 plt.ylabel('Normalised mean confinement time')
                 plt.title('Mean confinement times for {}kA device'.format(current))
@@ -262,7 +262,7 @@ def process_radial_locations(energies, radii, currents,
                     plt.scatter(currents, mean_confinement_times[i, :, k], label="{}m".format(radius))
                     # p = plt.loglog(theoretical_currents, gummersall_confinement, linestyle="-.")
                     # plt.semilogx(theoretical_currents, theoretical_confinement, linestyle="--")
-                    plt.semilogx(theoretical_currents, curve_fit, linestyle=":")
+                    plt.loglog(theoretical_currents, theoretical_confinement, linestyle=":")
                 plt.ylim([np.min(mean_confinement_times[:, :, k]), np.max(mean_confinement_times[:, :, k])])
                 plt.xlabel('Current [A]')
                 plt.ylabel('Mean confinement time [s]')
@@ -284,7 +284,7 @@ def process_radial_locations(energies, radii, currents,
                     plt.scatter(energies, mean_confinement_times[i, j, :], label="{}kA".format(current * 1e-3))
                     # p = plt.loglog(theoretical_energies, gummersall_confinement, linestyle="-.")
                     # plt.loglog(theoretical_energies, theoretical_confinement, linestyle="--")
-                    plt.loglog(theoretical_energies, curve_fit, linestyle=":")
+                    plt.loglog(theoretical_energies, theoretical_confinement, linestyle=":")
                 plt.xlabel('energy [eV]')
                 plt.ylabel('Mean confinement time [s]')
                 plt.title('Mean confinement times for a {}m device'.format(radius))
@@ -298,8 +298,8 @@ def process_radial_locations(energies, radii, currents,
 
 if __name__ == "__main__":
     radius = [0.1, 1.0, 5.0, 10.0]
-    current = [1e3, 1e4, 1e5]
-    energies = [1.0, 10.0, 100.0, 1000.0]
+    current = [1e3, 5e3, 1e4, 5e4, 1e5]
+    energies = [5.0, 10.0, 50.0, 1e2, 5e2]
     process_radial_locations(energies, radius, current,
-                             plot_velocity_histograms=False, plot_normalised_radii=False, plot_mean_confinement=True)
+                             plot_velocity_histograms=False, plot_normalised_radii=True, plot_mean_confinement=True)
 
