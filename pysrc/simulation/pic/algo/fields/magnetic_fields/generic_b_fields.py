@@ -10,10 +10,11 @@ from matplotlib import pyplot as plt
 from scipy.interpolate import RegularGridInterpolator
 
 from plasma_physics.pysrc.simulation.pic.algo.geometry.vector_ops import cross, magnitude, arbitrary_axis_rotation_3d
+from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
 class CurrentLoop(object):
-    mu_0 = 1.25663706e-6
+    mu_0 = PhysicalConstants.mu_0
 
     def __init__(self, I, radius, centre, normal, num_pts):
         """"
