@@ -13,7 +13,7 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 from plasma_physics.pysrc.theory.reactivities.fusion_reaction_rates import ReactionRatesCalculator
 
 
-def get_power_balance():
+def get_power_balance(use_gummersall, include_ions):
     """
     Function to get a parameter scan of the power balance for different fusion
     reactions
@@ -48,12 +48,16 @@ def get_power_balance():
     # and the charges to cancel out
     WELL_DEPTH *= 1e3
     n_electrons = 2 * PhysicalConstants.epsilon_0 * WELL_DEPTH / (radius ** 2 * PhysicalConstants.electron_charge)
-    n_dd = N_dd + n_electrons
-    n_dt = N_dt + n_electrons
+    n_electron_dd = N_dd + n_electrons if include_ions else n_electrons
+    n_electron_dt = N_dt + n_electrons if include_ions else n_electrons
 
     # Calculate power losses - according to Gummersall thesis values
-    P_cusp_dd = 5.38e-13 * PhysicalConstants.epsilon_0 * WELL_DEPTH ** 2.75 / np.sqrt(current * radius ** 7) / PhysicalConstants.electron_charge
-    P_cusp_dt = 5.38e-13 * PhysicalConstants.epsilon_0 * WELL_DEPTH ** 2.75 / np.sqrt(current * radius ** 7) / PhysicalConstants.electron_charge
+    if use_gummersall:
+        P_cusp_dd = n_electron_dd * 4.3e-13 * WELL_DEPTH ** 1.75 / np.sqrt(current * radius ** 3)
+        P_cusp_dt = n_electron_dt * 4.3e-13 * WELL_DEPTH ** 1.75 / np.sqrt(current * radius ** 3)
+    else:
+        P_cusp_dd = n_electron_dd * 2.43e-13 * WELL_DEPTH ** 1.72 / (current ** 0.594 * radius)
+        P_cusp_dt = n_electron_dt * 2.43e-13 * WELL_DEPTH ** 1.72 / (current ** 0.594 * radius)
 
     # Get power balances - set power to be 1 if it is negative. We do not care about these points 
     power_threshold = 1.0
@@ -63,50 +67,23 @@ def get_power_balance():
     dt_balance[dt_balance < power_threshold] = power_threshold
 
     # Plot power balance results
-    fig, ax = plt.subplots(2, 4, sharey='row', sharex='col', figsize=(12, 7))
-
-    # Plot Power Generated
-    im = ax[0, 0].contourf(np.log10(WELL_DEPTH), np.log10(N_dd), np.log10(P_dd), 100)
-    fig.colorbar(im, ax=ax[0, 0])
-    ax[0, 0].set_ylabel("$n_i$ [$m^3$]")
-    ax[0, 0].set_title("$p_{gen}$ DD [$Wm-3$]")
-    im = ax[1, 0].contourf(np.log10(WELL_DEPTH), np.log10(N_dt), np.log10(P_dt), 100)
-    fig.colorbar(im, ax=ax[1, 0])
-    ax[1, 0].set_title("$p_{gen}$ DT [$Wm-3$]")
-    ax[1, 0].set_ylabel("$n_i$ [$m^3$]")
-    ax[1, 0].set_xlabel("Well Depth [$eV$]")        
-
-    # Plot Power loss
-    im = ax[0, 1].contourf(np.log10(WELL_DEPTH), np.log10(N_dd), np.log10(P_cusp_dd), 100)
-    fig.colorbar(im, ax=ax[0, 1])
-    ax[0, 1].set_title("$p_{cusp}$ DD [$Wm-3$]")
-    im = ax[1, 1].contourf(np.log10(WELL_DEPTH), np.log10(N_dt), np.log10(P_cusp_dt), 100)
-    fig.colorbar(im, ax=ax[1, 1])
-    ax[1, 1].set_title("$p_{cusp}$ DT [$Wm-3$]")
-    ax[1, 1].set_xlabel("Well Depth [$eV$]")
-
-    # Plot required electron number density
-    im = ax[0, 2].contourf(np.log10(WELL_DEPTH), np.log10(N_dd), np.log10(n_dd), 100)
-    fig.colorbar(im, ax=ax[0, 2])
-    ax[0, 2].set_title("$n_e$ [$m-3$]")
-    im = ax[1, 2].contourf(np.log10(WELL_DEPTH), np.log10(N_dt), np.log10(n_dt), 100)
-    fig.colorbar(im, ax=ax[1, 2])
-    ax[1, 2].set_title("$n_e$ [$m-3$]")
-    ax[1, 2].set_xlabel("Well Depth [$eV$]")
+    fig, ax = plt.subplots(2, sharey='row', sharex='col', figsize=(12, 7))      
 
     # Plot Power Production
-    im = ax[0, 3].contourf(np.log10(WELL_DEPTH), np.log10(N_dd), np.log10(dd_balance), 100)
-    fig.colorbar(im, ax=ax[0, 3])
-    ax[0, 3].set_title("DD Power Balance [$Wm-3$]")
-    im = ax[1, 3].contourf(np.log10(WELL_DEPTH), np.log10(N_dt), np.log10(dt_balance), 100)
-    fig.colorbar(im, ax=ax[1, 3])
-    ax[1, 3].set_title("DT Power Balance [$Wm-3$]")
-    ax[1, 3].set_xlabel("Well Depth [$eV$]")
+    im = ax[0].contourf(np.log10(WELL_DEPTH), np.log10(N_dd), np.log10(dd_balance), 100)
+    fig.colorbar(im, ax=ax[0])
+    ax[0].set_title("DD Power Balance [$Wm-3$]")
+    im = ax[1].contourf(np.log10(WELL_DEPTH), np.log10(N_dt), np.log10(dt_balance), 100)
+    fig.colorbar(im, ax=ax[1])
+    ax[1].set_title("DT Power Balance [$Wm-3$]")
+    ax[1].set_xlabel("Well Depth [$eV$]")
 
     fig.suptitle("Polywell power balance for a {}m device with {}kA".format(radius, current * 1e-3))
     plt.show()
 
 
 if __name__ == "__main__":
-    get_power_balance()
+    include_ions = True
+    use_gummersall = False
+    get_power_balance(use_gummersall, include_ions)
 
