@@ -79,3 +79,7 @@ def boris_solver_internal(E, B, X, V, Q, M, dt):
 
     return X_plus, V_plus
 
+
+if __name__ == '__main__':
+    pass
+
