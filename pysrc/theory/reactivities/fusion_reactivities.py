@@ -38,7 +38,12 @@ class FusionReaction(object):
     def __number_of_species_2(self, rho):
         return rho / (self.M1 + self.M2) * self.M2 * FusionReaction.avogadro_constant
 
-    def number_density(self, rho):
+    def number_density_product(self, rho):
+        """
+        rho: density in gcm-3
+
+        Return the product of number density of reactant species
+        """
         n_1 = self.__number_of_species_1(rho)
         n_2 = self.__number_of_species_2(rho)
 

@@ -21,7 +21,7 @@ def get_power_balance(use_gummersall, include_ions):
     current = 1e5
     radius = 10.0
     well_depth = np.logspace(-1, 2, 200)
-    rho = np.logspace(-10, 0, 200)
+    rho = np.logspace(-16, -6, 200)
 
     # Generate calculators
     dd_reaction_rate_calculator = ReactionRatesCalculator(DDReaction)
@@ -33,15 +33,16 @@ def get_power_balance(use_gummersall, include_ions):
     WELL_DEPTH, RHO, dt_reaction_rate = dt_reaction_rate_calculator.get_reaction_rates(well_depth, rho)
 
     # Calculate power produced per metre cubed
+    m3_conversion = 1e6
     MW_conversion = 1e-6
     dd_energy_released = 7.3e6 * PhysicalConstants.electron_charge
     dt_energy_released = 17.59e6 * PhysicalConstants.electron_charge
-    P_dd = dd_reaction_rate * dd_energy_released
-    P_dt = dd_reaction_rate * dt_energy_released
+    P_dd = dd_reaction_rate * dd_energy_released * m3_conversion * MW_conversion
+    P_dt = dd_reaction_rate * dt_energy_released * m3_conversion * MW_conversion
 
     # Get number densities
-    N_dd = np.sqrt(2 * DDReaction().number_density(RHO))
-    N_dt = np.sqrt(DTReaction().number_density(RHO))
+    N_dd = np.sqrt(2 * DDReaction().number_density_product(RHO)) * m3_conversion
+    N_dt = np.sqrt(DTReaction().number_density_product(RHO)) * m3_conversion
 
     # Get necessary well depth - assuming uniform charge. The electrons are assumed to have the well depth energy. This is 
     # the energy they are being accelerated to. The deuterium density is assumed to be superposed on top of this electron cloud
@@ -53,11 +54,11 @@ def get_power_balance(use_gummersall, include_ions):
 
     # Calculate power losses - according to Gummersall thesis values
     if use_gummersall:
-        P_cusp_dd = n_electron_dd * 4.3e-13 * WELL_DEPTH ** 1.75 / np.sqrt(current * radius ** 3)
-        P_cusp_dt = n_electron_dt * 4.3e-13 * WELL_DEPTH ** 1.75 / np.sqrt(current * radius ** 3)
+        P_cusp_dd = n_electron_dd * 4.3e-13 * WELL_DEPTH ** 1.75 / np.sqrt(current * radius ** 3) * MW_conversion
+        P_cusp_dt = n_electron_dt * 4.3e-13 * WELL_DEPTH ** 1.75 / np.sqrt(current * radius ** 3) * MW_conversion
     else:
-        P_cusp_dd = n_electron_dd * 2.43e-13 * WELL_DEPTH ** 1.72 / (current ** 0.594 * radius)
-        P_cusp_dt = n_electron_dt * 2.43e-13 * WELL_DEPTH ** 1.72 / (current ** 0.594 * radius)
+        P_cusp_dd = n_electron_dd * 2.43e-13 * WELL_DEPTH ** 1.72 / (current ** 0.594 * radius) * MW_conversion
+        P_cusp_dt = n_electron_dt * 2.43e-13 * WELL_DEPTH ** 1.72 / (current ** 0.594 * radius) * MW_conversion
 
     # Get power balances - set power to be 1 if it is negative. We do not care about these points 
     power_threshold = 1.0
@@ -72,10 +73,10 @@ def get_power_balance(use_gummersall, include_ions):
     # Plot Power Production
     im = ax[0].contourf(np.log10(WELL_DEPTH), np.log10(N_dd), np.log10(dd_balance), 100)
     fig.colorbar(im, ax=ax[0])
-    ax[0].set_title("DD Power Balance [$Wm-3$]")
+    ax[0].set_title("DD Power Balance [$MWm-3$]")
     im = ax[1].contourf(np.log10(WELL_DEPTH), np.log10(N_dt), np.log10(dt_balance), 100)
     fig.colorbar(im, ax=ax[1])
-    ax[1].set_title("DT Power Balance [$Wm-3$]")
+    ax[1].set_title("DT Power Balance [$MWm-3$]")
     ax[1].set_xlabel("Well Depth [$eV$]")
 
     fig.suptitle("Polywell power balance for a {}m device with {}kA".format(radius, current * 1e-3))
@@ -84,6 +85,6 @@ def get_power_balance(use_gummersall, include_ions):
 
 if __name__ == "__main__":
     include_ions = True
-    use_gummersall = False
+    use_gummersall = True
     get_power_balance(use_gummersall, include_ions)
 

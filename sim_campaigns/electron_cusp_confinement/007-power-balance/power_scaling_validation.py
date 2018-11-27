@@ -31,7 +31,7 @@ def validate_against_park_2014():
     m3_conversion = 1e6
     GW_conversion = 1e-9
     dt_energy_released = 17.59e6 * PhysicalConstants.electron_charge * number_of_reactions * m3_conversion * GW_conversion
-    print("Fusion Power: {} GWcm^-3".format(dt_energy_released))
+    print("Fusion Power: {} GWm^-3".format(dt_energy_released))
 
 
 if __name__ == '__main__':

@@ -22,18 +22,30 @@ class ReactionRatesCalculator(object):
         self.fusion_reaction = fusion_reaction()
 
     def get_reaction_rate(self, T, rho):
+        """
+        T: Temperature (keV)
+        rho: density (gcm-3)
+
+        return reaction rate in number of reactions per cm3 per second
+        """
         assert isinstance(T, float)
         assert isinstance(rho, float)
 
         reactivity_fit = BoschHaleReactivityFit(self.fusion_reaction)
         reactivities = reactivity_fit.get_reactivity(T)
-        n_1_n_2 = self.fusion_reaction.number_density(rho)
+        n_1_n_2 = self.fusion_reaction.number_density_product(rho)
 
         reaction_rate = n_1_n_2 * reactivities
 
         return reaction_rate
 
     def get_reaction_rates(self, T, rho):
+        """
+        T: Temperature (keV)
+        rho: density (gcm-3)
+
+        return reaction rates in number of reactions per cm3 per second
+        """
         assert isinstance(T, np.ndarray)
         assert len(T.shape) == 1
         assert len(rho.shape) == 1
@@ -41,7 +53,7 @@ class ReactionRatesCalculator(object):
         reactivity_fit = BoschHaleReactivityFit(self.fusion_reaction)
         TEMP, RHO = np.meshgrid(T, rho, indexing='ij')
         reactivities = reactivity_fit.get_reactivity(TEMP)
-        n_1_n_2 = self.fusion_reaction.number_density(RHO)
+        n_1_n_2 = self.fusion_reaction.number_density_product(RHO)
 
         reaction_rate = n_1_n_2 * reactivities
 
@@ -61,15 +73,16 @@ if __name__ == '__main__':
     TEMP, RHO, dt_reaction_rate = dt_reaction_rate_calculator.get_reaction_rates(T, rho)
 
     # Calculate power produced per metre cubed
+    m3_conversion = 1e6
     MW_conversion = 1e-6
     dd_energy_released = 7.3e6 * PhysicalConstants.electron_charge
     dt_energy_released = 17.59e6 * PhysicalConstants.electron_charge
-    P_dd = dd_reaction_rate * dd_energy_released * MW_conversion
-    P_dt = dd_reaction_rate * dt_energy_released * MW_conversion
+    P_dd = dd_reaction_rate * dd_energy_released * MW_conversion * m3_conversion
+    P_dt = dd_reaction_rate * dt_energy_released * MW_conversion * m3_conversion
 
-    # Get number densities
-    N_dd = np.sqrt(2 * DDReaction().number_density(RHO))
-    N_dt = np.sqrt(DTReaction().number_density(RHO))
+    # Get number densities - cm-3
+    N_dd = np.sqrt(2 * DDReaction().number_density_product(RHO)) * m3_conversion
+    N_dt = np.sqrt(DTReaction().number_density_product(RHO)) * m3_conversion
 
     fig, ax = plt.subplots(2, 2)
 

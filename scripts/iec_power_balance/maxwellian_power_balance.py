@@ -31,15 +31,16 @@ def get_maxwellian_power_balance():
     TEMP, RHO, dt_reaction_rate = dt_reaction_rate_calculator.get_reaction_rates(T, rho)
 
     # Calculate power produced per metre cubed
+    m3_conversion = 1e6
     MW_conversion = 1e-6
     dd_energy_released = 7.3e6 * PhysicalConstants.electron_charge
     dt_energy_released = 17.59e6 * PhysicalConstants.electron_charge
-    P_dd = dd_reaction_rate * dd_energy_released * MW_conversion
-    P_dt = dd_reaction_rate * dt_energy_released * MW_conversion
+    P_dd = dd_reaction_rate * dd_energy_released * MW_conversion * m3_conversion
+    P_dt = dd_reaction_rate * dt_energy_released * MW_conversion * m3_conversion
 
     # Get number densities
-    N_dd = np.sqrt(2 * DDReaction().number_density(RHO))
-    N_dt = np.sqrt(DTReaction().number_density(RHO))
+    N_dd = np.sqrt(2 * DDReaction().number_density_product(RHO))
+    N_dt = np.sqrt(DTReaction().number_density_product(RHO))
 
     # Calculate bremsstrahlung loss rates - don't need to worry about Z_eff 
     # as these are assumed fully ionised hydrogen plasmas
@@ -59,11 +60,11 @@ def get_maxwellian_power_balance():
     fig, ax = plt.subplots(2, sharex=True)
 
     # Plot Power Production
-    im = ax[0].contourf(np.log10(TEMP), np.log10(N_dd), np.log10(dd_balance), 100)
+    im = ax[0].contourf(np.log10(TEMP), np.log10(N_dd * m3_conversion), np.log10(dd_balance), 100)
     fig.colorbar(im, ax=ax[0])
     ax[0].set_ylabel("Number density [$m^3$]")
     ax[0].set_title("DD Power Balance [$MWm-3$]")
-    im = ax[1].contourf(np.log10(TEMP), np.log10(N_dt), np.log10(dt_balance), 100)
+    im = ax[1].contourf(np.log10(TEMP), np.log10(N_dt * m3_conversion), np.log10(dt_balance), 100)
     fig.colorbar(im, ax=ax[1])
     ax[1].set_title("DT Power Balance [$MWm-3$]")
     ax[1].set_ylabel("Number density [$m^3$]")
