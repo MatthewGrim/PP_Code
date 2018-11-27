@@ -9,12 +9,14 @@ from Atzeni - The Physics of Inertial Fusion, p19
 import numpy as np
 from matplotlib import pyplot as plt
 
+from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
+
 
 class FusionReaction(object):
     """
     Class to store coefficients of fits
     """
-    avogadro_constant = 6.023e23
+    avogadro_constant = PhysicalConstants.avogadro_constant
 
     def __init__(self, C0, C1, C2, C3, C4, C5, C6, C7):
         self.C0 = C0
@@ -172,7 +174,7 @@ if __name__ == '__main__':
     d3he_reactivities = d3he_reactivity.get_reactivity(T)
     pB_reactivities = pB_reactivity.get_reactivity(T)
 
-    plt.figure(figsize=(12, 10))
+    plt.figure(figsize=(12, 7))
     plt.loglog(T, dt_reactivities, label="DT")
     plt.loglog(T, dd_reactivities, label="DD")
     plt.loglog(T, d3he_reactivities, label="D3He")

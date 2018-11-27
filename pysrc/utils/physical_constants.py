@@ -14,6 +14,8 @@ class PhysicalConstants(object):
     electron_charge = 1.60218e-19
     boltzmann_constant = 1.3806490351e-23
     electron_mass = 9.10938356e-31
+    
+    avogadro_constant = 6.023e23
 
     def __init__(self):
         raise RuntimeError("This class is static!")

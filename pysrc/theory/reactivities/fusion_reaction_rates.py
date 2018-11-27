@@ -21,6 +21,18 @@ class ReactionRatesCalculator(object):
         """
         self.fusion_reaction = fusion_reaction()
 
+    def get_reaction_rate(self, T, rho):
+        assert isinstance(T, float)
+        assert isinstance(rho, float)
+
+        reactivity_fit = BoschHaleReactivityFit(self.fusion_reaction)
+        reactivities = reactivity_fit.get_reactivity(T)
+        n_1_n_2 = self.fusion_reaction.number_density(rho)
+
+        reaction_rate = n_1_n_2 * reactivities
+
+        return reaction_rate
+
     def get_reaction_rates(self, T, rho):
         assert isinstance(T, np.ndarray)
         assert len(T.shape) == 1
