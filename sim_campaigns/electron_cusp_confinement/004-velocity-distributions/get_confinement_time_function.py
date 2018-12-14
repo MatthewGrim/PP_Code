@@ -14,11 +14,11 @@ import os
 def fit_data():
     # Parameter space of full study
     radius = np.asarray([0.1, 1.0, 5.0, 10.0])
-    current = np.asarray([1e3, 1e4, 1e5])
-    energies = np.asarray([1.0, 10.0, 100.0, 1000.0])
+    current = np.asarray([1e3, 5e3, 1e4, 5e4, 1e5])
+    energies = np.asarray([5.0, 10.0, 50.0, 1e2, 5e2])
 
     # Load mean confinement times
-    res_dir = "results"
+    res_dir = "results_long"
     mean_confinement_times = np.zeros((radius.shape[0], current.shape[0], energies.shape[0]))
     for i, r in enumerate(radius):
         file_name = "mean_confinement_times_{}m".format(r)

@@ -6,6 +6,7 @@ This script is used to process results for velocity probability distributions
 """
 
 import os
+import scipy.interpolate as interpolate
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -108,9 +109,17 @@ def process_radial_locations(energies, radii, currents,
 
                     # Load final state
                     fig = plt.figure(figsize=(10, 10))
+                    confinement_times = list()
                     for count, file in enumerate(state_files):
                         # Load file and get statistics
                         new_results = np.loadtxt(file)
+                        
+                        # Collect the confinement times of all particle trajectories
+                        times = new_results[:, 0]
+                        for t in times:
+                            confinement_times.append(t)
+
+                        # Get total number of confined particles
                         final_state_results[0] += np.sum(new_results[:, 4])
                         final_state_results[1] += new_results.shape[0]
                         confinement_time_sum += np.sum(new_results[:, 0])
@@ -124,6 +133,16 @@ def process_radial_locations(energies, radii, currents,
                         ax = fig.add_subplot('111', projection='3d')
                         ax.scatter(final_x_position[confined], final_y_position[confined], final_z_position[confined], c='b', label='confined')
                         ax.scatter(final_x_position[escaped], final_y_position[escaped], final_z_position[escaped], c='r', label='escaped')
+                    
+                    confinement_times = np.asarray(confinement_times)
+                    confinement_times = confinement_times[confinement_times[:].argsort()]
+                    fraction_in_polywell = np.linspace(1.0, 0.0, confinement_times.shape[0])
+                    f_interpolator = interpolate.interp1d(fraction_in_polywell, confinement_times)
+                    f = 0.5
+                    t = f_interpolator(f)
+                    t_mean = t / (-np.log(f))
+                    mean_confinement_times[i, j, k] = t_mean
+
                     # Get number of samples and escape ratio
                     num_samples = final_state_results[1]
                     escaped_ratio = final_state_results[0] / final_state_results[1]
@@ -138,11 +157,7 @@ def process_radial_locations(energies, radii, currents,
 
                     # --- Print number of samples ---
                     print("Number of samples [millions]: {}".format(np.sum(v_x_numbers) * 1e-6))
-                    print("Escaped ratio: {}".format(escaped_ratio))
-
-                    # --- Get mean confinement time ---
-                    mean_confinement_time = confinement_time_sum / num_samples
-                    mean_confinement_times[i, j, k] = mean_confinement_time
+                    print("Escaped ratio: {}".format(escaped_ratio))           
 
                     # --- Plot Histograms ---
                     if plot_velocity_histograms:
@@ -301,5 +316,5 @@ if __name__ == "__main__":
     current = [1e3, 5e3, 1e4, 5e4, 1e5]
     energies = [5.0, 10.0, 50.0, 1e2, 5e2]
     process_radial_locations(energies, radius, current,
-                             plot_velocity_histograms=False, plot_normalised_radii=True, plot_mean_confinement=True)
+                             plot_velocity_histograms=False, plot_normalised_radii=False, plot_mean_confinement=True)
 
