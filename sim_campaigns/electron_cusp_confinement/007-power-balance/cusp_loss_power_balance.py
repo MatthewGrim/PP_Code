@@ -21,7 +21,7 @@ def get_power_balance(use_gummersall, include_ions):
     current = 1e5
     radius = 10.0
     well_depth = np.logspace(-1, 2, 200)
-    rho = np.logspace(-16, -6, 200)
+    rho = np.logspace(-16, 0, 200)
 
     # Generate calculators
     dd_reaction_rate_calculator = ReactionRatesCalculator(DDReaction)
