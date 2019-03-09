@@ -2,9 +2,7 @@
 Author: Rohan Ramasamy
 Date: 08/03/2019
 
-This file contains functions to solve Bennett equilibria. Given a current profile, the magnetic field and pressure 
-profiles are calculated. The poloidal flux could equally be used as an input, but because this code was written 
-to consider current driven processes, like in a fast Z pinch, the current was chosen as the input.
+This file contains functions to solve 1D MHD equilibria.
 """
 
 
@@ -24,10 +22,17 @@ class BennetEquilibriumCalculator(object):
 		"""
 		radial_points [m]: radial positions of current samples
 		current_density [Am-2]: radial profile of current density
+
+		Used to solve Bennett equilibria. Given a current profile, the magnetic field and pressure 
+		profiles are calculated. The poloidal flux could equally be used as an input, but because 
+		this code was written to consider current driven processes, like in a fast Z pinch, the 
+		current was chosen as the input.
 		"""
 		# Integrate magnetic field from Ampere's law
 		poloidal_integrand = PhysicalConstants.mu_0 * current_density * radial_points
 		poloidal_field = integrate.cumtrapz(poloidal_integrand, radial_points)
+		
+		# Remove axis points
 		radial_points = radial_points[1:]
 		current_density = current_density[1:]
 		poloidal_field /= radial_points
@@ -37,6 +42,8 @@ class BennetEquilibriumCalculator(object):
 		pressure = integrate.cumtrapz(pressure_integrand, radial_points)
 		# Apply boundary condition that at plasma boundary, pressure is zero
 		pressure -= pressure[-1]
+		
+		# Remove axis points
 		radial_points = radial_points[1:]
 		current_density = current_density[1:]
 		poloidal_field = poloidal_field[1:]
@@ -47,6 +54,7 @@ class BennetEquilibriumCalculator(object):
 		print('Beta: {}'.format(beta))
 
 		return radial_points, current_density, poloidal_field, pressure
+
 
 if __name__ == '__main__':
 	r_min = 0.0
@@ -80,3 +88,4 @@ if __name__ == '__main__':
 	ax[2].set_xlim([r_min, r_max])
 
 	plt.show()
+
