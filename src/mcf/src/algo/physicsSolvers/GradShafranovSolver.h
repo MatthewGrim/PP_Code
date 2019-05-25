@@ -45,10 +45,9 @@ namespace mcf {
           * Initialise Grad Shafranov solver with grid parameters
           **/
          GradShafranovSolver(
-            const double& minX,
-            const double& maxX,
-            const double& minY,
-            const double& maxY,
+            const double& centreX,
+            const double& centreY,
+            const double& radius,
             const int& resolution
             );
 
@@ -93,7 +92,7 @@ namespace mcf {
          void 
          setUpSystem();
 
-         double mMinX, mMaxX, mMinY, mMaxY;
+         double mCentreX, mCentreY, mRadius;
          int mResolution;
 
          dealii::Triangulation<DIM> mTriangulation;

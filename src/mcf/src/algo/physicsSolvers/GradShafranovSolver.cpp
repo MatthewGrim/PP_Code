@@ -18,16 +18,14 @@ Date: 24/05/2019
 namespace mcf {
     GradShafranovSolver::
     GradShafranovSolver(
-        const double& minX,
-        const double& maxX,
-        const double& minY,
-        const double& maxY,
+        const double& centreX,
+        const double& centreY,
+        const double& radius,
         const int& resolution
         ) :
-        mMinX(minX),
-        mMaxX(maxX),
-        mMinY(minY),
-        mMaxY(maxY),
+        mCentreX(centreX),
+        mCentreY(centreY),
+        mRadius(radius),
         mResolution(resolution),
         fe(dealii::FE_Q<DIM>(ORDER), DIM),
         dof_handler (mTriangulation),
@@ -38,9 +36,8 @@ namespace mcf {
     GradShafranovSolver:: 
     makeGrid() 
     {
-        const dealii::Point<DIM> lowerLeft (mMinX, mMinY, 0);
-        const dealii::Point<DIM> upperRight (mMaxX, mMaxY, 0);
-        dealii::GridGenerator::hyper_rectangle(mTriangulation, lowerLeft, upperRight);
+        const dealii::Point<DIM> centre (mCentreX, mCentreY, 0);
+        dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
         
         mTriangulation.refine_global(mResolution);
 
@@ -61,9 +58,9 @@ namespace mcf {
         for(unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++){
             double x = dofLocation[globalDOF][0];
             double y = dofLocation[globalDOF][1];
-        
+            double r = x * x + y * y;
             // Apply Dirichlet boundary condition on outer boundary = 0.0
-            if (x == mMinX || x == mMaxX || y == mMinY || y == mMaxY) {
+            if (r == mRadius * mRadius) {
                 boundary_values[globalDOF] = 0.0;
             }
         }
