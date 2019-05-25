@@ -4,13 +4,14 @@ Date: 24/05/2019
 **/
 
 #include <mcf/src/algo/physicsSolvers/GradShafranovSolver.h>
-#include <mcf/src/algo/interpolators/Interpolator1D.h>
 #include <mcf/src/macros.h>
 
 #include <deal.II/grid/tria.h>
 #include <deal.II/base/point.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_out.h>
+#include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/precondition.h>
 
 #include <stdexcept>
 
@@ -29,8 +30,13 @@ namespace mcf {
         mResolution(resolution),
         fe(dealii::FE_Q<DIM>(ORDER), DIM),
         dof_handler (mTriangulation),
-        quadrature_formula(QUADRULE),
-        face_quadrature_formula(QUADRULE) {}
+        quadrature_formula(QUADRULE) 
+    {
+        // For output
+        //Nodal Solution names - this is for writing the output file
+        nodal_solution_names.push_back("psi");
+        nodal_data_component_interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+    }
 
     void
     GradShafranovSolver:: 
@@ -68,7 +74,10 @@ namespace mcf {
 
     void 
     GradShafranovSolver::
-    solveIteration()
+    solveIteration(
+        const Interpolator1D& pInterp,
+        const Interpolator1D& ffPrimeInterp
+        )
     {
         //For volume integration/quadrature points
         dealii::FEValues<DIM> fe_values (fe,
@@ -77,23 +86,16 @@ namespace mcf {
                     dealii::update_gradients | 
                     dealii::update_JxW_values);
 
-        //For surface integration/quadrature points
-        dealii::FEFaceValues<DIM> fe_face_values (fe,
-                            face_quadrature_formula, 
-                            dealii::update_values | 
-                            dealii::update_quadrature_points | 
-                            dealii::update_JxW_values);
-
         // Zero matrices
         K=0; F=0;
-        const unsigned int dofs_per_elem = fe.dofs_per_cell;                      //This gives you dofs per element
-        const unsigned int nodes_per_elem = dealii::GeometryInfo<DIM>::vertices_per_cell;
-        const unsigned int num_quad_pts = quadrature_formula.size();              //Total number of quad points in the element
-        const unsigned int num_face_quad_pts = face_quadrature_formula.size();    //Total number of quad points in the face
-        const unsigned int faces_per_elem = dealii::GeometryInfo<DIM>::faces_per_cell;
+
+        // Get element size and number of quadrature points
+        const unsigned int dofs_per_elem = fe.dofs_per_cell;                               
+        const unsigned int num_quad_pts = quadrature_formula.size();                        
+        
+        // Define local matrices and mapping between them
         dealii::FullMatrix<double> Klocal (dofs_per_elem, dofs_per_elem);
         dealii::Vector<double>     Flocal (dofs_per_elem);
-
         std::vector<unsigned int> local_dof_indices (dofs_per_elem);              //This relates local dof numbering to global dof numbering
 
         //loop over elements  
@@ -105,41 +107,38 @@ namespace mcf {
             //Retrieve the effective "connectivity matrix" for this element
             elem->get_dof_indices (local_dof_indices);
                 
-            // Define Klocal and Flocal
-            Klocal = 0.0;
+            // Zero Klocal and Flocal
+            Klocal = 0.0, Flocal = 0.0;
             //Loop over local DOFs and quadrature points to populate Klocal
             //Note that all quadrature points are included in this single loop
             for (unsigned int q=0; q < num_quad_pts; ++q){
-                //evaluate elemental stiffness matrix, K^{AB}_{ik} = \integral N^A_{,j}*C_{ijkl}*N^B_{,l} dV 
-                for (unsigned int A=0; A < nodes_per_elem; A++) { //Loop over nodes
-                    for(unsigned int i=0; i < DIM; i++){ //Loop over nodal dofs
-                        for (unsigned int B=0; B < nodes_per_elem; B++) {
-                            for(unsigned int k=0; k < DIM; k++){
-                                for (unsigned int j = 0; j < DIM; j++){
-                                    for (unsigned int l = 0; l < DIM; l++){
-                                        /*//EDIT - You need to define Klocal here. Note that the indices of Klocal are the element dof numbers (0 through 23),
-                                        which you can calculate from the element node numbers (0 through 8) and the nodal dofs (0 through 2).
-                                        You'll need the following information:
-                                        basis gradient vector: fe_values.shape_grad(elementDOF,q), where elementDOF is DIM*A+i or DIM*B+k
-                                        NOTE: this is the gradient with respect to the real domain (not the bi-unit domain)
-                                        elasticity tensor: use the function C(i,j,k,l)
-                                        det(J) times the total quadrature weight: fe_values.JxW(q)*/
-                                        unsigned int DOF_A_idx = A * DIM + i;
-                                        unsigned int DOF_B_idx = B * DIM + k;
-                                        double basis_gradient_A = fe_values.shape_grad(DOF_A_idx, q)[j];
-                                        double basis_gradient_B = fe_values.shape_grad(DOF_B_idx, q)[l];
-                                        double det_JxW = fe_values.JxW(q);
-                                        Klocal[DOF_A_idx][DOF_B_idx] += basis_gradient_B * basis_gradient_A * det_JxW;
-                                    }
-                                }
-                            }
-                        }
+                // Get local matrix
+                for (unsigned int i=0; i < dofs_per_elem; ++i) {
+                    for (unsigned int j=0; j < dofs_per_elem; ++j) {
+                        auto globalDOF = local_dof_indices[i];
+                        double R = dofLocation[globalDOF][0];
+                        double contribution = -(fe_values.shape_grad (i, q) *
+                                               fe_values.shape_grad (j, q) * 
+                                               fe_values.JxW (q)) / R;
+                        
+                        Klocal(i, j) +=  contribution;
                     }
                 }
+                
+                // Get local forcing function
+                for (unsigned int i=0; i < dofs_per_elem; ++i) {
+                    auto globalDOF = local_dof_indices[i];
+                    double R = dofLocation[globalDOF][0];
+                    double psi = D[globalDOF];
+                    double pressure = pInterp.interpY(psi);
+                    double ffPrime = ffPrimeInterp.interpY(psi);
+
+                    double contribution = -(MU_0 * R * R * pressure + ffPrime);
+                    contribution *= fe_values.shape_value(i, q) / R;
+                    contribution *= fe_values.JxW(q);
+                    Flocal(i) += contribution;
+                }
             }
-            
-            //Loop over faces (for Neumann BCs), local DOFs and quadrature points to populate Flocal.
-            Flocal = 0.0;
 
             //Assemble local K and F into global K and F
             unsigned int f_global_index, k_global_index;
@@ -155,6 +154,10 @@ namespace mcf {
 
         //Let deal.II apply Dirichlet conditions WITHOUT modifying the size of K and F global
         dealii::MatrixTools::apply_boundary_values (boundary_values, K, D, F, false);
+    
+        dealii::SolverControl solver_control (1000, 1e-12);
+        dealii::SolverCG<> solver(solver_control);
+        solver.solve (K, D, F, dealii::PreconditionIdentity());
     }
 
     void 
@@ -168,14 +171,27 @@ namespace mcf {
         const Interpolator1D pInterp = Interpolator1D(psi, pressure);
         const Interpolator1D ffPrimeInterp = Interpolator1D(psi, ffPrime);
 
-        throw std::runtime_error("Method has not been implemented yet!");
+        initialiseBoundaryConditions();
+        solveIteration(pInterp, ffPrimeInterp);
+        outputResults();
     }
 
     void 
     GradShafranovSolver::
     outputResults()
     {
-        throw std::runtime_error("Method has not been implemented yet!");
+        //Write results to VTK file
+        std::ofstream output1 ("solution.vtk");
+        DataOut<dim> data_out; data_out.attach_dof_handler (dof_handler);
+
+        //Add nodal DOF data
+        data_out.add_data_vector (D,
+                        nodal_solution_names,
+                        DataOut<dim>::type_dof_data,
+                        nodal_data_component_interpretation);
+        data_out.build_patches();
+        data_out.write_vtk(output1);
+        output1.close();
     }
 
     void

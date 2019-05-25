@@ -3,6 +3,8 @@ Author: Rohan Ramasamy
 Date: 24/05/2019
 **/
 
+#include <mcf/src/algo/interpolators/Interpolator1D.h>
+
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/logstream.h>
@@ -40,6 +42,7 @@ namespace mcf {
          static const int DIM = 2;
          static const int ORDER = 2;
          static const int QUADRULE = 2;
+         static constexpr double MU_0 = 1.25663706e-6;
 
          /**
           * Initialise Grad Shafranov solver with grid parameters
@@ -50,24 +53,6 @@ namespace mcf {
             const double& radius,
             const int& resolution
             );
-
-         /**
-          * Use grid parameters to construct grid
-          **/
-         void 
-         makeGrid();
-
-         /**
-          * Set up boundary conditions for grid
-          **/
-         void 
-         initialiseBoundaryConditions();
-
-         /**
-          * Carry out single Picard iteration
-          **/
-         void 
-         solveIteration();
 
          /**
           * Solve Grad shafranov equation on grid given input profiles
@@ -91,21 +76,47 @@ namespace mcf {
           **/
          void 
          setUpSystem();
+         
+         /**
+          * Use grid parameters to construct grid
+          **/
+         void 
+         makeGrid();
+
+         /**
+          * Set up boundary conditions for grid
+          **/
+         void 
+         initialiseBoundaryConditions();
+
+         /**
+          * Carry out single Picard iteration
+          **/
+         void 
+         solveIteration(
+            const Interpolator1D& pInterp,
+            const Interpolator1D& ffPrimeInterp
+            );
 
          double mCentreX, mCentreY, mRadius;
          int mResolution;
 
-         dealii::Triangulation<DIM> mTriangulation;
-         dealii::FESystem<DIM>      fe;            
+         // Finite element data structures
+         dealii::Triangulation<DIM> mTriangulation;            // Grid triangulation
+         dealii::FESystem<DIM>      fe;                 
          dealii::DoFHandler<DIM>    dof_handler;
-         dealii::QGauss<DIM>   quadrature_formula;      //Quadrature
-         dealii::QGauss<DIM-1> face_quadrature_formula; //Face Quadrature
-         dealii::Table<2,double>	        dofLocation;	  //Table of the coordinates of dofs by global dof number
-         std::map<unsigned int,double> boundary_values; //Map of dirichlet boundary conditions
+
+         dealii::QGauss<DIM>   quadrature_formula;             //Quadrature
+         dealii::Table<2,double>	        dofLocation;	         //Table of the coordinates of dofs by global dof number
+         std::map<unsigned int,double> boundary_values;        //Map of dirichlet boundary conditions
                   
-         // Deal II Data structures
-         dealii::SparsityPattern      sparsity_pattern; //Sparse matrix pattern
-         dealii::SparseMatrix<double> K;                //Global stiffness matrix - Sparse matrix - used in the solver
-         dealii::Vector<double>       D, F;             //Global vectors - Solution vector (D) and Global force vector (F)
+         // Matrix Data structures
+         dealii::SparsityPattern      sparsity_pattern;        //Sparse matrix pattern
+         dealii::SparseMatrix<double> K;                       //Global stiffness matrix - Sparse matrix - used in the solver
+         dealii::Vector<double>       D, F;                    //Global vectors - Solution vector (D) and Global force vector (F)
+   
+         // Output variables
+         std::vector<std::string> nodal_solution_names;
+         std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation> nodal_data_component_interpretation;
    };
 }
