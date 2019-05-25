@@ -42,7 +42,7 @@ namespace mcf {
     GradShafranovSolver:: 
     makeGrid() 
     {
-        const dealii::Point<DIM> centre (mCentreX, mCentreY, 0);
+        const dealii::Point<DIM> centre (mCentreX, mCentreY);
         dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
         
         mTriangulation.refine_global(mResolution);
@@ -60,13 +60,17 @@ namespace mcf {
     initialiseBoundaryConditions()
     {
         const unsigned int totalDOFs = dof_handler.n_dofs(); //Total number of degrees of freedom
+        double tol = mRadius * 1e-4;
 
         for(unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++){
-            double x = dofLocation[globalDOF][0];
-            double y = dofLocation[globalDOF][1];
+            double x = dofLocation[globalDOF][0] - mCentreX;
+            double y = dofLocation[globalDOF][1] - mCentreY;
             double r = x * x + y * y;
             // Apply Dirichlet boundary condition on outer boundary = 0.0
-            if (r == mRadius * mRadius) {
+            if (abs(mRadius * mRadius - r * r) < tol) {
+#if DEBUG
+                std::cout << std::to_string(x) << " " << std::to_string(y) << " " << std::to_string(r) << std::endl;
+#endif
                 boundary_values[globalDOF] = 0.0;
             }
         }
@@ -79,6 +83,10 @@ namespace mcf {
         const Interpolator1D& ffPrimeInterp
         )
     {
+        double f0 = 0.5;
+        double p0 = 0.5 / MU_0;
+        double R0 = mCentreX;
+
         //For volume integration/quadrature points
         dealii::FEValues<DIM> fe_values (fe,
                     quadrature_formula, 
@@ -130,8 +138,8 @@ namespace mcf {
                     auto globalDOF = local_dof_indices[i];
                     double R = dofLocation[globalDOF][0];
                     double psi = D[globalDOF];
-                    double pressure = pInterp.interpY(psi);
-                    double ffPrime = ffPrimeInterp.interpY(psi);
+                    double pressure = p0;
+                    double ffPrime = f0 * R0 * R0;
 
                     double contribution = -(MU_0 * R * R * pressure + ffPrime);
                     contribution *= fe_values.shape_value(i, q) / R;
@@ -155,7 +163,7 @@ namespace mcf {
         //Let deal.II apply Dirichlet conditions WITHOUT modifying the size of K and F global
         dealii::MatrixTools::apply_boundary_values (boundary_values, K, D, F, false);
     
-        dealii::SolverControl solver_control (1000, 1e-12);
+        dealii::SolverControl solver_control (100, 1e-6);
         dealii::SolverCG<> solver(solver_control);
         solver.solve (K, D, F, dealii::PreconditionIdentity());
     }
@@ -171,8 +179,19 @@ namespace mcf {
         const Interpolator1D pInterp = Interpolator1D(psi, pressure);
         const Interpolator1D ffPrimeInterp = Interpolator1D(psi, ffPrime);
 
+        std::cout << "Building grid..." << std::endl;
+        makeGrid();
+
+        std::cout << "Initialise boundary conditions..." << std::endl;
         initialiseBoundaryConditions();
+
+        std::cout << "Setting up FE system..." << std::endl;
+        setUpSystem();
+
+        std::cout << "Solving..." << std::endl;
         solveIteration(pInterp, ffPrimeInterp);
+        
+        std::cout << "Output results..." << std::endl;
         outputResults();
     }
 
@@ -182,12 +201,12 @@ namespace mcf {
     {
         //Write results to VTK file
         std::ofstream output1 ("solution.vtk");
-        DataOut<dim> data_out; data_out.attach_dof_handler (dof_handler);
+        dealii::DataOut<DIM> data_out; data_out.attach_dof_handler (dof_handler);
 
         //Add nodal DOF data
         data_out.add_data_vector (D,
                         nodal_solution_names,
-                        DataOut<dim>::type_dof_data,
+                        dealii::DataOut<DIM>::type_dof_data,
                         nodal_data_component_interpretation);
         data_out.build_patches();
         data_out.write_vtk(output1);
