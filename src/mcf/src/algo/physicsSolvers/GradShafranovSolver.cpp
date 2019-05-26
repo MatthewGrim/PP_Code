@@ -28,10 +28,14 @@ namespace mcf {
         mCentreY(centreY),
         mRadius(radius),
         mResolution(resolution),
-        fe(dealii::FE_Q<DIM>(ORDER), DIM),
+        fe(dealii::FE_Q<DIM>(ORDER)),
         dof_handler (mTriangulation),
         quadrature_formula(QUADRULE) 
     {
+        f0 = 1.0;
+        p0 = 0.5 / MU_0;
+        R0 = mCentreX;
+        a = 0.5;
         // For output
         //Nodal Solution names - this is for writing the output file
         nodal_solution_names.push_back("psi");
@@ -46,7 +50,6 @@ namespace mcf {
         dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
         
         mTriangulation.refine_global(mResolution);
-
 #if DEBUG
         std::ofstream out ("grid-1.eps");
         dealii::GridOut grid_out;
@@ -57,7 +60,7 @@ namespace mcf {
 
     void 
     GradShafranovSolver::
-    initialiseBoundaryConditions()
+    applyBoundaryConditions()
     {
         const unsigned int totalDOFs = dof_handler.n_dofs(); //Total number of degrees of freedom
         double tol = mRadius * 1e-4;
@@ -65,28 +68,27 @@ namespace mcf {
         for(unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++){
             double x = dofLocation[globalDOF][0] - mCentreX;
             double y = dofLocation[globalDOF][1] - mCentreY;
-            double r = x * x + y * y;
+            double r2 = x * x + y * y;
             // Apply Dirichlet boundary condition on outer boundary = 0.0
-            if (abs(mRadius * mRadius - r * r) < tol) {
+            if (abs(mRadius * mRadius - r2) < tol) {
+                boundary_values[globalDOF] = 1.0 - y * y / (a * a);
+                boundary_values[globalDOF] -= std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0);
+                boundary_values[globalDOF] *= f0 * R0 * R0 * a * a / 2.0;
 #if DEBUG
-                std::cout << std::to_string(x) << " " << std::to_string(y) << " " << std::to_string(r) << std::endl;
+                std::cout << std::to_string(x) << " " << std::to_string(y) << " " << std::to_string(boundary_values[globalDOF]) << std::endl;
 #endif
-                boundary_values[globalDOF] = 0.0;
             }
         }
+        dealii::MatrixTools::apply_boundary_values (boundary_values, K, D, F);
     }
 
     void 
     GradShafranovSolver::
-    solveIteration(
+    assembleMatrix(
         const Interpolator1D& pInterp,
         const Interpolator1D& ffPrimeInterp
         )
     {
-        double f0 = 0.5;
-        double p0 = 0.5 / MU_0;
-        double R0 = mCentreX;
-
         //For volume integration/quadrature points
         dealii::FEValues<DIM> fe_values (fe,
                     quadrature_formula, 
@@ -125,6 +127,9 @@ namespace mcf {
                     for (unsigned int j=0; j < dofs_per_elem; ++j) {
                         auto globalDOF = local_dof_indices[i];
                         double R = dofLocation[globalDOF][0];
+                        // double contribution = (fe_values.shape_grad (i, q) *
+                        //                        fe_values.shape_grad (j, q) * 
+                        //                        fe_values.JxW (q));
                         double contribution = -(fe_values.shape_grad (i, q) *
                                                fe_values.shape_grad (j, q) * 
                                                fe_values.JxW (q)) / R;
@@ -141,6 +146,9 @@ namespace mcf {
                     double pressure = p0;
                     double ffPrime = f0 * R0 * R0;
 
+                    // double contribution = fe_values.shape_value(i, q);
+                    // contribution *= fe_values.JxW(q);
+                    // Flocal(i) += contribution;
                     double contribution = -(MU_0 * R * R * pressure + ffPrime);
                     contribution *= fe_values.shape_value(i, q) / R;
                     contribution *= fe_values.JxW(q);
@@ -159,13 +167,18 @@ namespace mcf {
                 }
             }
         }
+    }
 
-        //Let deal.II apply Dirichlet conditions WITHOUT modifying the size of K and F global
-        dealii::MatrixTools::apply_boundary_values (boundary_values, K, D, F, false);
-    
-        dealii::SolverControl solver_control (100, 1e-6);
-        dealii::SolverCG<> solver(solver_control);
-        solver.solve (K, D, F, dealii::PreconditionIdentity());
+    void
+    GradShafranovSolver::
+    solveIteration()
+    {
+        dealii::SparseDirectUMFPACK  A;
+        A.initialize(K);
+        A.vmult (D, F);
+        // dealii::SolverControl solver_control (100, 1e-6);
+        // dealii::SolverCG<> solver(solver_control);
+        // solver.solve (K, D, F, dealii::PreconditionIdentity());
     }
 
     void 
@@ -182,14 +195,17 @@ namespace mcf {
         std::cout << "Building grid..." << std::endl;
         makeGrid();
 
-        std::cout << "Initialise boundary conditions..." << std::endl;
-        initialiseBoundaryConditions();
-
         std::cout << "Setting up FE system..." << std::endl;
         setUpSystem();
 
+        std::cout << "Assembling matrix..." << std::endl;
+        assembleMatrix(pInterp, ffPrimeInterp);
+
+        std::cout << "Initialise boundary conditions..." << std::endl;
+        applyBoundaryConditions();
+        
         std::cout << "Solving..." << std::endl;
-        solveIteration(pInterp, ffPrimeInterp);
+        solveIteration();
         
         std::cout << "Output results..." << std::endl;
         outputResults();
@@ -231,9 +247,6 @@ namespace mcf {
             }
         }
 
-        // set up boundary conditions
-        initialiseBoundaryConditions();
-
         //Define the size of the global matrices and vectors
         sparsity_pattern.reinit (dof_handler.n_dofs(), 
                                  dof_handler.n_dofs(),
@@ -243,6 +256,11 @@ namespace mcf {
         K.reinit (sparsity_pattern);
         D.reinit(dof_handler.n_dofs());
         F.reinit(dof_handler.n_dofs());
+
+        // Initial condition
+        for(unsigned int i=0; i < dof_handler.n_dofs(); i++){
+            D[i] = f0 * R0 * R0 * a * a / 2.0;
+        }
 
 #if DEBUG
         std::cout << "   Number of active elems:       " << mTriangulation.n_active_cells() << std::endl;

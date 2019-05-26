@@ -40,7 +40,7 @@ namespace mcf {
       public:
          // Grad Shafranov is fundamentally a 2D problem
          static const int DIM = 2;
-         static const int ORDER = 2;
+         static const int ORDER = 1;
          static const int QUADRULE = 2;
          static constexpr double MU_0 = 1.25663706e-6;
 
@@ -71,6 +71,8 @@ namespace mcf {
          outputResults();
 
       private:
+        double f0, p0, R0, a;
+
          /**
           * Internal function to set up Deal II to solve system
           **/
@@ -87,28 +89,34 @@ namespace mcf {
           * Set up boundary conditions for grid
           **/
          void 
-         initialiseBoundaryConditions();
+         applyBoundaryConditions();
+
+         /**
+          * Construct matrices for solution
+          **/
+         void 
+         assembleMatrix(
+            const Interpolator1D& pInterp,
+            const Interpolator1D& ffPrimeInterp
+            );
 
          /**
           * Carry out single Picard iteration
           **/
-         void 
-         solveIteration(
-            const Interpolator1D& pInterp,
-            const Interpolator1D& ffPrimeInterp
-            );
+         void
+         solveIteration();
 
          double mCentreX, mCentreY, mRadius;
          int mResolution;
 
          // Finite element data structures
          dealii::Triangulation<DIM> mTriangulation;            // Grid triangulation
-         dealii::FESystem<DIM>      fe;                 
+         dealii::FE_Q<DIM>      fe;                 
          dealii::DoFHandler<DIM>    dof_handler;
 
          dealii::QGauss<DIM>   quadrature_formula;             //Quadrature
          dealii::Table<2,double>	        dofLocation;	         //Table of the coordinates of dofs by global dof number
-         std::map<unsigned int,double> boundary_values;        //Map of dirichlet boundary conditions
+         std::map<dealii::types::global_dof_index,double> boundary_values;        //Map of dirichlet boundary conditions
                   
          // Matrix Data structures
          dealii::SparsityPattern      sparsity_pattern;        //Sparse matrix pattern

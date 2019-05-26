@@ -12,7 +12,7 @@ int main() {
     std::vector<double> b(8, 0.0);
     std::vector<double> c(8, 0.0);
 
-    mcf::GradShafranovSolver gradShafranovSolver(10.0, 0.0, 1.0, 2);
+    mcf::GradShafranovSolver gradShafranovSolver(1.0, 0.0, 1.1, 5);
     gradShafranovSolver.solveGradShafranov(a, b, c);
 
     return 0;
