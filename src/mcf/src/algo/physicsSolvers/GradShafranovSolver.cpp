@@ -33,8 +33,8 @@ namespace mcf {
         quadrature_formula(QUADRULE) 
     {
         f0 = 1.0;
-        p0 = 0.5 / MU_0;
-        R0 = mCentreX;
+        p0 = f0 / MU_0;
+        R0 = 1.1;
         a = 0.5;
         // For output
         //Nodal Solution names - this is for writing the output file
@@ -46,10 +46,14 @@ namespace mcf {
     GradShafranovSolver:: 
     makeGrid() 
     {
-        const dealii::Point<DIM> centre (mCentreX, mCentreY);
-        dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
-        
+        dealii::Point<DIM> lowerLeft(0.0, -0.7);
+        dealii::Point<DIM> upperRight(1.5, 0.7);
+        dealii::GridGenerator::hyper_rectangle (mTriangulation, lowerLeft, upperRight);
         mTriangulation.refine_global(mResolution);
+        // const dealii::Point<DIM> centre (mCentreX, mCentreY);
+        // dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
+        
+        // mTriangulation.refine_global(mResolution);
 #if DEBUG
         std::ofstream out ("grid-1.eps");
         dealii::GridOut grid_out;
@@ -66,11 +70,12 @@ namespace mcf {
         double tol = mRadius * 1e-4;
 
         for(unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++){
-            double x = dofLocation[globalDOF][0] - mCentreX;
-            double y = dofLocation[globalDOF][1] - mCentreY;
-            double r2 = x * x + y * y;
+            double x = dofLocation[globalDOF][0];
+            double y = dofLocation[globalDOF][1];
+            double r2 = (x - mCentreX) * (x - mCentreX) + (y - mCentreY) * (y - mCentreY);
             // Apply Dirichlet boundary condition on outer boundary = 0.0
-            if (abs(mRadius * mRadius - r2) < tol) {
+            // if (abs(mRadius * mRadius - r2) < tol) {
+            if (x == 0.0 || x == 1.5 || y == -0.7 || y == 0.7) {
                 boundary_values[globalDOF] = 1.0 - y * y / (a * a);
                 boundary_values[globalDOF] -= std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0);
                 boundary_values[globalDOF] *= f0 * R0 * R0 * a * a / 2.0;
@@ -79,6 +84,8 @@ namespace mcf {
 #endif
             }
         }
+
+
         dealii::MatrixTools::apply_boundary_values (boundary_values, K, D, F);
     }
 
@@ -127,6 +134,7 @@ namespace mcf {
                     for (unsigned int j=0; j < dofs_per_elem; ++j) {
                         auto globalDOF = local_dof_indices[i];
                         double R = dofLocation[globalDOF][0];
+                        if (R == 0.0) R = 1e-6;
                         // double contribution = (fe_values.shape_grad (i, q) *
                         //                        fe_values.shape_grad (j, q) * 
                         //                        fe_values.JxW (q));
@@ -198,25 +206,32 @@ namespace mcf {
         std::cout << "Setting up FE system..." << std::endl;
         setUpSystem();
 
-        std::cout << "Assembling matrix..." << std::endl;
-        assembleMatrix(pInterp, ffPrimeInterp);
-
-        std::cout << "Initialise boundary conditions..." << std::endl;
-        applyBoundaryConditions();
-        
-        std::cout << "Solving..." << std::endl;
-        solveIteration();
-        
         std::cout << "Output results..." << std::endl;
-        outputResults();
+        outputResults(99);
+
+        for (int i = 0; i < 1; ++i) {
+            std::cout << "Assembling matrix..." << std::endl;
+            assembleMatrix(pInterp, ffPrimeInterp);
+
+            std::cout << "Initialise boundary conditions..." << std::endl;
+            applyBoundaryConditions();
+            
+            std::cout << "Solving..." << std::endl;
+            solveIteration();
+        
+            std::cout << "Output results..." << std::endl;
+            outputResults(i);
+        }
     }
 
     void 
     GradShafranovSolver::
-    outputResults()
+    outputResults(
+        const int& i
+    )
     {
         //Write results to VTK file
-        std::ofstream output1 ("solution.vtk");
+        std::ofstream output1 ("solution" + std::to_string(i) + ".vtk");
         dealii::DataOut<DIM> data_out; data_out.attach_dof_handler (dof_handler);
 
         //Add nodal DOF data
@@ -259,7 +274,10 @@ namespace mcf {
 
         // Initial condition
         for(unsigned int i=0; i < dof_handler.n_dofs(); i++){
-            D[i] = f0 * R0 * R0 * a * a / 2.0;
+            double x = dofLocation[i][0];
+            double y = dofLocation[i][1];
+
+            D[i] = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
         }
 
 #if DEBUG

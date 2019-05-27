@@ -68,7 +68,9 @@ namespace mcf {
           * Output results from Grad Shafranov solver
           **/
          void 
-         outputResults();
+         outputResults(
+            const int& i
+         );
 
       private:
         double f0, p0, R0, a;
