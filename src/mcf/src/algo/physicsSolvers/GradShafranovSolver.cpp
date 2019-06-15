@@ -76,9 +76,7 @@ namespace mcf {
             // Apply Dirichlet boundary condition on outer boundary = 0.0
             // if (abs(mRadius * mRadius - r2) < tol) {
             if (x == 0.0 || x == 1.5 || y == -0.7 || y == 0.7) {
-                boundary_values[globalDOF] = 1.0 - y * y / (a * a);
-                boundary_values[globalDOF] -= std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0);
-                boundary_values[globalDOF] *= f0 * R0 * R0 * a * a / 2.0;
+                boundary_values[globalDOF] = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
 #if DEBUG
                 std::cout << std::to_string(x) << " " << std::to_string(y) << " " << std::to_string(boundary_values[globalDOF]) << std::endl;
 #endif
@@ -109,7 +107,10 @@ namespace mcf {
         // Get element size and number of quadrature points
         const unsigned int dofs_per_elem = fe.dofs_per_cell;                               
         const unsigned int num_quad_pts = quadrature_formula.size();                        
-        
+        #if DEBUG
+                std::cout << "Number of Quad points: " << std::to_string(num_quad_pts) << std::endl;
+                std::cout << "Degrees of Freedom per Element: " << std::to_string(dofs_per_elem) << std::endl;
+        #endif
         // Define local matrices and mapping between them
         dealii::FullMatrix<double> Klocal (dofs_per_elem, dofs_per_elem);
         dealii::Vector<double>     Flocal (dofs_per_elem);
@@ -166,12 +167,12 @@ namespace mcf {
 
             //Assemble local K and F into global K and F
             unsigned int f_global_index, k_global_index;
-            for(unsigned int i=0; i<dofs_per_elem; i++){
+            for(unsigned int i=0; i<dofs_per_elem; ++i){
                 f_global_index = local_dof_indices[i];
-                F[f_global_index] += Flocal[i];
-                for(unsigned int j=0; j<dofs_per_elem; j++){
+                F[f_global_index] += Flocal(i);
+                for(unsigned int j=0; j<dofs_per_elem; ++j){
                     k_global_index = local_dof_indices[j];
-                    K.add(f_global_index, k_global_index, Klocal[i][j]);
+                    K.add(f_global_index, k_global_index, Klocal(i, j));
                 }
             }
         }
@@ -179,14 +180,11 @@ namespace mcf {
 
     void
     GradShafranovSolver::
-    solveIteration()
+     solveIteration()
     {
         dealii::SparseDirectUMFPACK  A;
         A.initialize(K);
         A.vmult (D, F);
-        // dealii::SolverControl solver_control (100, 1e-6);
-        // dealii::SolverCG<> solver(solver_control);
-        // solver.solve (K, D, F, dealii::PreconditionIdentity());
     }
 
     void 
