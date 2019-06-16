@@ -114,7 +114,6 @@ namespace mcf {
             const dealii::Point<DIM> centre (mCentreX, mCentreY);
             dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
             mTriangulation.refine_global(mResolution);
-
             // Transform grid to plasma shape
             dealii::GridTools::transform(SolovevTransformFunc(), mTriangulation);
         }
@@ -179,7 +178,7 @@ namespace mcf {
         double tol = mRadius * 1e-4;
 
         if (mGridType == GridType::plasmaBoundary) {
-            dealii::VectorTools::interpolate_boundary_values (dof_handler, 0, dealii::Functions::ZeroFunction<2>(), boundary_values);
+            dealii::VectorTools::interpolate_boundary_values (dof_handler, 0, dealii::Functions::ZeroFunction<DIM>(), boundary_values);
         }
         else {
             for(unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++){
@@ -224,6 +223,8 @@ namespace mcf {
                     dealii::update_values | 
                     dealii::update_gradients | 
                     dealii::update_JxW_values);
+        const dealii::Quadrature<DIM> quadrature = fe_values.get_quadrature();
+        const dealii::Mapping<DIM> *mapping = &fe_values.get_mapping();
 
         // Zero matrices
         K=0; F=0;
@@ -254,15 +255,17 @@ namespace mcf {
             //Loop over local DOFs and quadrature points to populate Klocal
             //Note that all quadrature points are included in this single loop
             for (unsigned int q=0; q < num_quad_pts; ++q){
+                const dealii::Point<DIM> quadPoint = quadrature.point(q);
+                dealii::Point<DIM> realQuadPoint = mapping->transform_unit_to_real_cell(elem, quadPoint);
+                double R = realQuadPoint[0];
+
                 // Get local matrix
                 for (unsigned int i=0; i < dofs_per_elem; ++i) {
                     for (unsigned int j=0; j < dofs_per_elem; ++j) {
-                        auto globalDOF = local_dof_indices[i];
-                        double R = dofLocation[globalDOF][0];
-                        if (R == 0.0) R = 1e-6;
+                        if (R == 0.0) R = 1e-10;
                         double contribution = -(fe_values.shape_grad (i, q) *
                                                fe_values.shape_grad (j, q) * 
-                                               fe_values.JxW (q)) / R;
+                                               fe_values.JxW(q)) / R;
                         
                         Klocal(i, j) +=  contribution;
                     }
@@ -270,9 +273,6 @@ namespace mcf {
                 
                 // Get local forcing function
                 for (unsigned int i=0; i < dofs_per_elem; ++i) {
-                    auto globalDOF = local_dof_indices[i];
-                    double R = dofLocation[globalDOF][0];
-                    double psi = D[globalDOF];
                     double pressure = p0;
                     double ffPrime = f0 * R0 * R0;
 
