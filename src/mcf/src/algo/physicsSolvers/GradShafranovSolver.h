@@ -35,6 +35,8 @@ Date: 24/05/2019
 
 
 namespace mcf {
+   enum class GridType {rectangular, circular, plasmaBoundary};
+
    class GradShafranovSolver
    {
       public:
@@ -51,7 +53,8 @@ namespace mcf {
             const double& centreX,
             const double& centreY,
             const double& radius,
-            const int& resolution
+            const int& resolution,
+            const GridType& gridType
             );
 
          /**
@@ -128,5 +131,9 @@ namespace mcf {
          // Output variables
          std::vector<std::string> nodal_solution_names;
          std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation> nodal_data_component_interpretation;
+         
+         // Define which grid type to use in equilibrium calculation
+         GridType mGridType;
+         std::string mGridName;
    };
 }

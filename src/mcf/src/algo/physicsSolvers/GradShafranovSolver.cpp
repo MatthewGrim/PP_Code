@@ -14,15 +14,53 @@ Date: 24/05/2019
 #include <deal.II/lac/precondition.h>
 
 #include <stdexcept>
+#include <cassert>
 
 
 namespace mcf {
+    /**
+     * Transform function used to generate plasma boundary of Soloviev problem
+     **/
+    struct SolovevTransformFunc {
+        dealii::Point<GradShafranovSolver::DIM> operator() (const dealii::Point<GradShafranovSolver::DIM> &in) const
+        {
+            double R0 = 1.1;
+            double a = 0.5;
+
+            double x = in[0] - R0;
+            double y = in[1];
+            double r = sqrt(x * x + y * y);
+
+            double alpha;
+            if ((x == 0.0) && (y == 0.0)) {
+                return dealii::Point<GradShafranovSolver::DIM> (R0, 0.0);
+            }
+            else {
+                alpha = atan(y / x);
+                if (x < 0.0) {
+                    if (y < 0.0) {
+                        alpha = -3.14159265 + alpha;
+                    }
+                    else {
+                        alpha = 3.14159265 + alpha;
+                    }
+                }
+
+                double rBound = R0 * sqrt(1 + 2 * a * cos(alpha) / R0);
+                double zBound = a * R0 * sin(alpha);
+
+                return dealii::Point<GradShafranovSolver::DIM> (R0 + r * (rBound - R0), r * zBound);
+            }
+        }
+    };
+
     GradShafranovSolver::
     GradShafranovSolver(
         const double& centreX,
         const double& centreY,
         const double& radius,
-        const int& resolution
+        const int& resolution,
+        const GridType& gridType
         ) :
         mCentreX(centreX),
         mCentreY(centreY),
@@ -30,7 +68,8 @@ namespace mcf {
         mResolution(resolution),
         fe(dealii::FE_Q<DIM>(ORDER)),
         dof_handler (mTriangulation),
-        quadrature_formula(QUADRULE) 
+        quadrature_formula(QUADRULE),
+        mGridType(gridType) 
     {
         f0 = 1.0;
         p0 = f0 / MU_0;
@@ -40,25 +79,53 @@ namespace mcf {
         //Nodal Solution names - this is for writing the output file
         nodal_solution_names.push_back("psi");
         nodal_data_component_interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
+
+        // Set grid name for outputs
+        switch (mGridType) {
+            case GridType::rectangular    : mGridName = "rectangular"; break;
+            case GridType::circular       : mGridName = "circular"; break;
+            case GridType::plasmaBoundary : mGridName = "plasmaBoundary"; break;
+        }
     }
 
     void
     GradShafranovSolver:: 
     makeGrid() 
     {
-        dealii::Point<DIM> lowerLeft(0.0, -0.7);
-        dealii::Point<DIM> upperRight(1.5, 0.7);
-        dealii::GridGenerator::hyper_rectangle (mTriangulation, lowerLeft, upperRight);
-        mTriangulation.refine_global(mResolution);
-        // const dealii::Point<DIM> centre (mCentreX, mCentreY);
-        // dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
-        
-        // mTriangulation.refine_global(mResolution);
+        if (mGridType == GridType::rectangular) {
+            std::cout << "\tMaking rectangular grid" << std::endl;
+            dealii::Point<DIM> lowerLeft(0.0, -0.7);
+            dealii::Point<DIM> upperRight(1.5, 0.7);
+            dealii::GridGenerator::hyper_rectangle (mTriangulation, lowerLeft, upperRight);
+            mTriangulation.refine_global(mResolution);
+        }
+        else if (mGridType == GridType::circular) {
+            std::cout << "\tMaking circular grid" << std::endl;
+            const dealii::Point<DIM> centre (mCentreX, mCentreY);
+            dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
+            
+            mTriangulation.refine_global(mResolution);
+        }
+        else if (mGridType == GridType::plasmaBoundary) {
+            std::cout << "\tMaking plasma boundary grid" << std::endl;
+            //radius of initial grid needs to be one for transform to correctly map points to new boundary
+            assert(mRadius == 1.0);
+            
+            const dealii::Point<DIM> centre (mCentreX, mCentreY);
+            dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
+            mTriangulation.refine_global(mResolution);
+
+            // Transform grid to plasma shape
+            dealii::GridTools::transform(SolovevTransformFunc(), mTriangulation);
+        }
+        else {
+            throw std::runtime_error("Chosen grid type is not implemented yet!");
+        }
 #if DEBUG
         std::ofstream out ("grid-1.eps");
         dealii::GridOut grid_out;
         grid_out.write_eps (mTriangulation, out);
-        std::cout << "Grid written to grid-1.eps" << std::endl;
+        std::cout << "\tGrid written to grid-1.eps" << std::endl;
 #endif
     }
 
@@ -67,22 +134,37 @@ namespace mcf {
     applyBoundaryConditions()
     {
         const unsigned int totalDOFs = dof_handler.n_dofs(); //Total number of degrees of freedom
-        double tol = mRadius * 1e-4;
+        double tol = mRadius * 1e-2;
 
-        for(unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++){
-            double x = dofLocation[globalDOF][0];
-            double y = dofLocation[globalDOF][1];
-            double r2 = (x - mCentreX) * (x - mCentreX) + (y - mCentreY) * (y - mCentreY);
-            // Apply Dirichlet boundary condition on outer boundary = 0.0
-            // if (abs(mRadius * mRadius - r2) < tol) {
-            if (x == 0.0 || x == 1.5 || y == -0.7 || y == 0.7) {
-                boundary_values[globalDOF] = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
-#if DEBUG
-                std::cout << std::to_string(x) << " " << std::to_string(y) << " " << std::to_string(boundary_values[globalDOF]) << std::endl;
-#endif
+        if (mGridType == GridType::plasmaBoundary) {
+            dealii::VectorTools::interpolate_boundary_values (dof_handler, 0, dealii::Functions::ZeroFunction<2>(), boundary_values);
+        }
+        else {
+            for(unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++){
+                bool isBoundaryPoint = false;
+                double x = dofLocation[globalDOF][0];
+                double y = dofLocation[globalDOF][1];
+
+                // Apply Dirichlet boundary condition on outer boundary = 0.0
+                if (mGridType == GridType::rectangular) {
+                    if (x == 0.0 || x == 1.5 || y == -0.7 || y == 0.7) {
+                        isBoundaryPoint = true;
+                    }
+                }
+                else if (mGridType == GridType::circular) {
+                    double r2 = sqrt((x - mCentreX) * (x - mCentreX) + (y - mCentreY) * (y - mCentreY));
+                    if (r2 - mRadius < tol) {
+                        isBoundaryPoint = true;
+                    }
+                }
+                else {
+                    throw std::runtime_error("Chosen grid type is not implemented yet!");
+                }
+                if (isBoundaryPoint) {
+                    boundary_values[globalDOF] = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
+                }
             }
         }
-
 
         dealii::MatrixTools::apply_boundary_values (boundary_values, K, D, F);
     }
@@ -108,8 +190,8 @@ namespace mcf {
         const unsigned int dofs_per_elem = fe.dofs_per_cell;                               
         const unsigned int num_quad_pts = quadrature_formula.size();                        
         #if DEBUG
-                std::cout << "Number of Quad points: " << std::to_string(num_quad_pts) << std::endl;
-                std::cout << "Degrees of Freedom per Element: " << std::to_string(dofs_per_elem) << std::endl;
+                std::cout << "\tNumber of Quad points: " << std::to_string(num_quad_pts) << std::endl;
+                std::cout << "\tDegrees of Freedom per Element: " << std::to_string(dofs_per_elem) << std::endl;
         #endif
         // Define local matrices and mapping between them
         dealii::FullMatrix<double> Klocal (dofs_per_elem, dofs_per_elem);
@@ -136,9 +218,6 @@ namespace mcf {
                         auto globalDOF = local_dof_indices[i];
                         double R = dofLocation[globalDOF][0];
                         if (R == 0.0) R = 1e-6;
-                        // double contribution = (fe_values.shape_grad (i, q) *
-                        //                        fe_values.shape_grad (j, q) * 
-                        //                        fe_values.JxW (q));
                         double contribution = -(fe_values.shape_grad (i, q) *
                                                fe_values.shape_grad (j, q) * 
                                                fe_values.JxW (q)) / R;
@@ -155,9 +234,6 @@ namespace mcf {
                     double pressure = p0;
                     double ffPrime = f0 * R0 * R0;
 
-                    // double contribution = fe_values.shape_value(i, q);
-                    // contribution *= fe_values.JxW(q);
-                    // Flocal(i) += contribution;
                     double contribution = -(MU_0 * R * R * pressure + ffPrime);
                     contribution *= fe_values.shape_value(i, q) / R;
                     contribution *= fe_values.JxW(q);
@@ -229,7 +305,7 @@ namespace mcf {
     )
     {
         //Write results to VTK file
-        std::ofstream output1 ("solution" + std::to_string(i) + ".vtk");
+        std::ofstream output1 ("solution_" + mGridName + std::to_string(i) + ".vtk");
         dealii::DataOut<DIM> data_out; data_out.attach_dof_handler (dof_handler);
 
         //Add nodal DOF data
@@ -274,13 +350,12 @@ namespace mcf {
         for(unsigned int i=0; i < dof_handler.n_dofs(); i++){
             double x = dofLocation[i][0];
             double y = dofLocation[i][1];
-
             D[i] = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
         }
 
 #if DEBUG
-        std::cout << "   Number of active elems:       " << mTriangulation.n_active_cells() << std::endl;
-        std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs() << std::endl;  
+        std::cout << "\tNumber of active elems:       " << mTriangulation.n_active_cells() << std::endl;
+        std::cout << "\tNumber of degrees of freedom: " << dof_handler.n_dofs() << std::endl;  
 #endif
     }
 }
