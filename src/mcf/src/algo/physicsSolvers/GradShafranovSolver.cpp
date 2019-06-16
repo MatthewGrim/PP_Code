@@ -129,12 +129,54 @@ namespace mcf {
 #endif
     }
 
+    void
+    GradShafranovSolver::
+    setUpSystem()
+    {
+        //Let deal.II organize degrees of freedom
+        dof_handler.distribute_dofs (fe);
+
+        //Get a vector of global degree-of-freedom x-coordinates
+        dealii::MappingQ1<DIM,DIM> mapping;
+        std::vector< dealii::Point<DIM,double> > dof_coords(dof_handler.n_dofs());
+        dofLocation.reinit(dof_handler.n_dofs(),DIM);
+        dealii::DoFTools::map_dofs_to_support_points<DIM,DIM>(mapping,dof_handler,dof_coords);
+        for(unsigned int i=0; i<dof_coords.size(); i++){
+            for(unsigned int j=0; j<DIM; j++){
+            dofLocation[i][j] = dof_coords[i][j];
+            }
+        }
+
+        //Define the size of the global matrices and vectors
+        sparsity_pattern.reinit (dof_handler.n_dofs(), 
+                                 dof_handler.n_dofs(),
+                                 dof_handler.max_couplings_between_dofs());
+        dealii::DoFTools::make_sparsity_pattern(dof_handler, sparsity_pattern);
+        sparsity_pattern.compress();
+        K.reinit (sparsity_pattern);
+        D.reinit(dof_handler.n_dofs());
+        F.reinit(dof_handler.n_dofs());
+        Derror.reinit(dof_handler.n_dofs());
+
+        // Initial condition
+        for(unsigned int i=0; i < dof_handler.n_dofs(); i++){
+            double x = dofLocation[i][0];
+            double y = dofLocation[i][1];
+            D[i] = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
+        }
+
+#if DEBUG
+        std::cout << "\tNumber of active elems:       " << mTriangulation.n_active_cells() << std::endl;
+        std::cout << "\tNumber of degrees of freedom: " << dof_handler.n_dofs() << std::endl;  
+#endif
+    }
+
     void 
     GradShafranovSolver::
     applyBoundaryConditions()
     {
         const unsigned int totalDOFs = dof_handler.n_dofs(); //Total number of degrees of freedom
-        double tol = mRadius * 1e-2;
+        double tol = mRadius * 1e-4;
 
         if (mGridType == GridType::plasmaBoundary) {
             dealii::VectorTools::interpolate_boundary_values (dof_handler, 0, dealii::Functions::ZeroFunction<2>(), boundary_values);
@@ -153,7 +195,7 @@ namespace mcf {
                 }
                 else if (mGridType == GridType::circular) {
                     double r2 = sqrt((x - mCentreX) * (x - mCentreX) + (y - mCentreY) * (y - mCentreY));
-                    if (r2 - mRadius < tol) {
+                    if (fabs(r2 - mRadius) < tol) {
                         isBoundaryPoint = true;
                     }
                 }
@@ -265,6 +307,53 @@ namespace mcf {
 
     void 
     GradShafranovSolver::
+    outputResults(
+        const int& i,
+        const bool& isError
+    )
+    {
+        //Write results to VTK file
+        std::ofstream output1 ("solution_" + mGridName + std::to_string(i) + ".vtk");
+        dealii::DataOut<DIM> data_out; data_out.attach_dof_handler (dof_handler);
+
+        //Add nodal DOF data
+        if (isError) {
+            data_out.add_data_vector (Derror,
+                            nodal_solution_names,
+                            dealii::DataOut<DIM>::type_dof_data,
+                            nodal_data_component_interpretation);
+        }
+        else {
+            data_out.add_data_vector (D,
+                            nodal_solution_names,
+                            dealii::DataOut<DIM>::type_dof_data,
+                            nodal_data_component_interpretation);
+        }
+        data_out.build_patches();
+        data_out.write_vtk(output1);
+        output1.close();
+    }
+
+    void
+    GradShafranovSolver::
+    computeError()
+    {
+        double l2Error = 0.0;
+        for(unsigned int i=0; i < dof_handler.n_dofs(); i++){
+            double x = dofLocation[i][0];
+            double y = dofLocation[i][1];
+            double sol = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
+            Derror[i] = fabs(D[i] - sol); 
+            l2Error += Derror[i];
+        }   
+        l2Error = l2Error / dof_handler.n_dofs();
+        std::cout << "\tMean relative error: " << std::to_string(l2Error) << std::endl;
+
+        outputResults(-1, true);
+    }
+
+    void 
+    GradShafranovSolver::
     solveGradShafranov(
         const std::vector<double> psi,
         const std::vector<double> pressure,
@@ -296,66 +385,6 @@ namespace mcf {
             std::cout << "Output results..." << std::endl;
             outputResults(i);
         }
-    }
-
-    void 
-    GradShafranovSolver::
-    outputResults(
-        const int& i
-    )
-    {
-        //Write results to VTK file
-        std::ofstream output1 ("solution_" + mGridName + std::to_string(i) + ".vtk");
-        dealii::DataOut<DIM> data_out; data_out.attach_dof_handler (dof_handler);
-
-        //Add nodal DOF data
-        data_out.add_data_vector (D,
-                        nodal_solution_names,
-                        dealii::DataOut<DIM>::type_dof_data,
-                        nodal_data_component_interpretation);
-        data_out.build_patches();
-        data_out.write_vtk(output1);
-        output1.close();
-    }
-
-    void
-    GradShafranovSolver::
-    setUpSystem()
-    {
-        //Let deal.II organize degrees of freedom
-        dof_handler.distribute_dofs (fe);
-
-        //Get a vector of global degree-of-freedom x-coordinates
-        dealii::MappingQ1<DIM,DIM> mapping;
-        std::vector< dealii::Point<DIM,double> > dof_coords(dof_handler.n_dofs());
-        dofLocation.reinit(dof_handler.n_dofs(),DIM);
-        dealii::DoFTools::map_dofs_to_support_points<DIM,DIM>(mapping,dof_handler,dof_coords);
-        for(unsigned int i=0; i<dof_coords.size(); i++){
-            for(unsigned int j=0; j<DIM; j++){
-            dofLocation[i][j] = dof_coords[i][j];
-            }
-        }
-
-        //Define the size of the global matrices and vectors
-        sparsity_pattern.reinit (dof_handler.n_dofs(), 
-                                 dof_handler.n_dofs(),
-                                 dof_handler.max_couplings_between_dofs());
-        dealii::DoFTools::make_sparsity_pattern(dof_handler, sparsity_pattern);
-        sparsity_pattern.compress();
-        K.reinit (sparsity_pattern);
-        D.reinit(dof_handler.n_dofs());
-        F.reinit(dof_handler.n_dofs());
-
-        // Initial condition
-        for(unsigned int i=0; i < dof_handler.n_dofs(); i++){
-            double x = dofLocation[i][0];
-            double y = dofLocation[i][1];
-            D[i] = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
-        }
-
-#if DEBUG
-        std::cout << "\tNumber of active elems:       " << mTriangulation.n_active_cells() << std::endl;
-        std::cout << "\tNumber of degrees of freedom: " << dof_handler.n_dofs() << std::endl;  
-#endif
+        computeError();
     }
 }

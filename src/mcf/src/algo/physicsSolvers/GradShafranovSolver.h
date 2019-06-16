@@ -72,9 +72,15 @@ namespace mcf {
           **/
          void 
          outputResults(
-            const int& i
+            const int& i,
+            const bool& isError=false
          );
 
+         /**
+          * Compute error between solution and known analytic solution
+          **/
+         void
+         computeError();
       private:
         double f0, p0, R0, a;
 
@@ -126,7 +132,7 @@ namespace mcf {
          // Matrix Data structures
          dealii::SparsityPattern      sparsity_pattern;        //Sparse matrix pattern
          dealii::SparseMatrix<double> K;                       //Global stiffness matrix - Sparse matrix - used in the solver
-         dealii::Vector<double>       D, F;                    //Global vectors - Solution vector (D) and Global force vector (F)
+         dealii::Vector<double>       D, F, Derror;                    //Global vectors - Solution vector (D) and Global force vector (F)
    
          // Output variables
          std::vector<std::string> nodal_solution_names;
