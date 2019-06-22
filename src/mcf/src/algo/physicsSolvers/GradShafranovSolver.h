@@ -141,10 +141,10 @@ namespace mcf {
          // Matrix Data structures
          dealii::SparsityPattern      sparsity_pattern;        //Sparse matrix pattern
          dealii::SparseMatrix<double> K;                       //Global stiffness matrix - Sparse matrix - used in the solver
-         dealii::Vector<double>       D, F, Derror;                    //Global vectors - Solution vector (D) and Global force vector (F)
+         dealii::Vector<double>       D, F, Derror, Jphi, P, FFprime;                    //Global vectors - Solution vector (D) and Global force vector (F)
    
          // Output variables
-         std::vector<std::string> nodal_solution_names;
+         std::vector<std::string> psi_solution, jphi_solution, p_solution, ffp_solution;
          std::vector<dealii::DataComponentInterpretation::DataComponentInterpretation> nodal_data_component_interpretation;
          
          // Define which grid type to use in equilibrium calculation

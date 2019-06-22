@@ -82,7 +82,10 @@ namespace mcf {
         a = 0.5;
         // For output
         //Nodal Solution names - this is for writing the output file
-        nodal_solution_names.push_back("psi");
+        psi_solution.push_back("psi");
+        jphi_solution.push_back("j_phi");
+        p_solution.push_back("pressure");
+        ffp_solution.push_back("FFprime");
         nodal_data_component_interpretation.push_back(dealii::DataComponentInterpretation::component_is_scalar);
 
         // Set grid name for outputs
@@ -159,6 +162,9 @@ namespace mcf {
         sparsity_pattern.compress();
         K.reinit (sparsity_pattern);
         D.reinit(dof_handler.n_dofs());
+        Jphi.reinit(dof_handler.n_dofs());
+        P.reinit(dof_handler.n_dofs());
+        FFprime.reinit(dof_handler.n_dofs());
         F.reinit(dof_handler.n_dofs());
         Derror.reinit(dof_handler.n_dofs());
 
@@ -179,13 +185,14 @@ namespace mcf {
     GradShafranovSolver::
     applyBoundaryConditions()
     {
+        // Get dofs on boundary
         const unsigned int totalDOFs = dof_handler.n_dofs(); //Total number of degrees of freedom
-        double tol = mRadius * 1e-6;
-
         std::vector<bool> is_boundary_dofs (totalDOFs);
         dealii::DoFTools::extract_boundary_dofs (dof_handler,
                                         dealii::ComponentMask(),
                                         is_boundary_dofs);
+
+        // Set boundary values
         for (unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++) {
             if (is_boundary_dofs[globalDOF]) {
                 double x = dofLocation[globalDOF][0];
@@ -298,6 +305,14 @@ namespace mcf {
         dealii::SparseDirectUMFPACK  A;
         A.initialize(K);
         A.vmult (D, F);
+
+        // Update equilibrium profiles
+        for(unsigned int i=0; i < dof_handler.n_dofs(); i++){
+            double x = dofLocation[i][0];
+            P[i] = p0 * D[i];
+            FFprime[i] = f0 * R0 * R0;
+            Jphi[i] = x * p0 + FFprime[i] / (x * MU_0);
+        }
     }
 
     void 
@@ -314,13 +329,28 @@ namespace mcf {
         //Add nodal DOF data
         if (isError) {
             data_out.add_data_vector (Derror,
-                            nodal_solution_names,
+                            psi_solution,
                             dealii::DataOut<DIM>::type_dof_data,
                             nodal_data_component_interpretation);
         }
         else {
             data_out.add_data_vector (D,
-                            nodal_solution_names,
+                            psi_solution,
+                            dealii::DataOut<DIM>::type_dof_data,
+                            nodal_data_component_interpretation);
+            
+            data_out.add_data_vector (Jphi,
+                            jphi_solution,
+                            dealii::DataOut<DIM>::type_dof_data,
+                            nodal_data_component_interpretation);
+            
+            data_out.add_data_vector (P,
+                            p_solution,
+                            dealii::DataOut<DIM>::type_dof_data,
+                            nodal_data_component_interpretation);
+            
+            data_out.add_data_vector (FFprime,
+                            ffp_solution,
                             dealii::DataOut<DIM>::type_dof_data,
                             nodal_data_component_interpretation);
         }
