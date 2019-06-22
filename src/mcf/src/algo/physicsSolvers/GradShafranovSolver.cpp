@@ -5,6 +5,7 @@ Date: 24/05/2019
 
 #include <mcf/src/algo/physicsSolvers/GradShafranovSolver.h>
 #include <mcf/src/macros.h>
+#include <mcf/src/utils/PhysicalConstants.h>
 
 #include <deal.II/base/point.h>
 
@@ -88,7 +89,7 @@ namespace mcf {
         switch (mGridType) {
             case GridType::rectangular    : mGridName = "rectangular"; break;
             case GridType::circular       : mGridName = "circular"; break;
-            case GridType::plasmaBoundary : mGridName = "plasmaBoundary"; break;
+            case GridType::solovievBoundary : mGridName = "solovievBoundary"; break;
         }
     }
 
@@ -110,12 +111,12 @@ namespace mcf {
             
             mTriangulation.refine_global(mResolution);
         }
-        else if (mGridType == GridType::plasmaBoundary) {
+        else if (mGridType == GridType::solovievBoundary) {
             std::cout << "\tMaking plasma boundary grid" << std::endl;
             //radius of initial grid needs to be one for transform to correctly map points to new boundary
             assert(mRadius == 1.0);
             
-            const dealii::Point<DIM> centre (mCentreX, mCentreY);
+            const dealii::Point<DIM> centre(mCentreX, mCentreY);
             dealii::GridGenerator::hyper_ball(mTriangulation, centre, mRadius);
             mTriangulation.refine_global(mResolution);
             // Transform grid to plasma shape
@@ -196,6 +197,13 @@ namespace mcf {
         dealii::MatrixTools::apply_boundary_values (boundary_values, K, D, F);
     }
 
+    void
+    GradShafranovSolver::
+    findAxis()
+    {
+        throw std::runtime_error("Not implemented yet!");
+    }
+
     void 
     GradShafranovSolver::
     assembleMatrix(
@@ -259,6 +267,7 @@ namespace mcf {
                 
                 // Get local forcing function
                 for (unsigned int i=0; i < dofs_per_elem; ++i) {
+                    double psi = D[i];
                     double pressure = p0;
                     double ffPrime = f0 * R0 * R0;
 
@@ -359,6 +368,9 @@ namespace mcf {
         outputResults(99);
 
         for (int i = 0; i < 1; ++i) {
+            // std::cout << "Finding Axis..." << std::endl;
+            // findAxis();
+
             std::cout << "Assembling matrix..." << std::endl;
             assembleMatrix(pInterp, ffPrimeInterp);
 

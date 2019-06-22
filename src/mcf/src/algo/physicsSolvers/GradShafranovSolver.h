@@ -39,7 +39,7 @@ Date: 24/05/2019
 
 
 namespace mcf {
-   enum class GridType {rectangular, circular, plasmaBoundary};
+   enum class GridType {rectangular, circular, solovievBoundary};
 
    class GradShafranovSolver
    {
@@ -48,7 +48,6 @@ namespace mcf {
          static const int DIM = 2;
          static const int ORDER = 1;
          static const int QUADRULE = 2;
-         static constexpr double MU_0 = 1.25663706e-6;
 
          /**
           * Initialise Grad Shafranov solver with grid parameters
@@ -86,8 +85,6 @@ namespace mcf {
          void
          computeError();
       private:
-        double f0, p0, R0, a;
-
          /**
           * Internal function to set up Deal II to solve system
           **/
@@ -107,6 +104,12 @@ namespace mcf {
          applyBoundaryConditions();
 
          /**
+          * Find psi value on axis 
+          */
+         void
+         findAxis();
+
+         /**
           * Construct matrices for solution
           **/
          void 
@@ -121,8 +124,10 @@ namespace mcf {
          void
          solveIteration();
 
+         double f0, p0, R0, a;
          double mCentreX, mCentreY, mRadius;
          int mResolution;
+         double psiAxis;
 
          // Finite element data structures
          dealii::Triangulation<DIM> mTriangulation;            // Grid triangulation
