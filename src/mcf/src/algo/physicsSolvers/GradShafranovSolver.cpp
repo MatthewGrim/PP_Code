@@ -182,33 +182,9 @@ namespace mcf {
         double tol = mRadius * 1e-6;
 
         std::vector<bool> is_boundary_dofs (totalDOFs);
-        if (mGridType == GridType::plasmaBoundary) {
-            dealii::DoFTools::extract_boundary_dofs (dof_handler,
-                                            dealii::ComponentMask(),
-                                            is_boundary_dofs);
-        }
-        else {
-            for(unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++){
-                is_boundary_dofs[globalDOF] = false;
-                double x = dofLocation[globalDOF][0];
-                double y = dofLocation[globalDOF][1];
-
-                if (mGridType == GridType::rectangular) {
-                    if (x == 0.0 || x == 1.5 || y == -0.7 || y == 0.7) {
-                        is_boundary_dofs[globalDOF] = true;
-                    }
-                }
-                else if (mGridType == GridType::circular) {
-                    double r2 = sqrt((x - mCentreX) * (x - mCentreX) + (y - mCentreY) * (y - mCentreY));
-                    if (fabs(r2 - mRadius) < tol) {
-                        is_boundary_dofs[globalDOF] = true;
-                    }
-                }
-                else {
-                    throw std::runtime_error("Chosen grid type is not implemented yet!");
-                }
-            }
-        }
+        dealii::DoFTools::extract_boundary_dofs (dof_handler,
+                                        dealii::ComponentMask(),
+                                        is_boundary_dofs);
         for (unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++) {
             if (is_boundary_dofs[globalDOF]) {
                 double x = dofLocation[globalDOF][0];
