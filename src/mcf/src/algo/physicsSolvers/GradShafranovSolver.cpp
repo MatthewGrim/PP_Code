@@ -6,12 +6,16 @@ Date: 24/05/2019
 #include <mcf/src/algo/physicsSolvers/GradShafranovSolver.h>
 #include <mcf/src/macros.h>
 
-#include <deal.II/grid/tria.h>
 #include <deal.II/base/point.h>
+
+#include <deal.II/grid/tria.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_out.h>
+
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/precondition.h>
+
+// #include <deal.II/fe/component_mask.h>
 
 #include <stdexcept>
 #include <cassert>
@@ -175,35 +179,41 @@ namespace mcf {
     applyBoundaryConditions()
     {
         const unsigned int totalDOFs = dof_handler.n_dofs(); //Total number of degrees of freedom
-        double tol = mRadius * 1e-4;
+        double tol = mRadius * 1e-6;
 
+        std::vector<bool> is_boundary_dofs (totalDOFs);
         if (mGridType == GridType::plasmaBoundary) {
-            dealii::VectorTools::interpolate_boundary_values (dof_handler, 0, dealii::Functions::ZeroFunction<DIM>(), boundary_values);
+            dealii::DoFTools::extract_boundary_dofs (dof_handler,
+                                            dealii::ComponentMask(),
+                                            is_boundary_dofs);
         }
         else {
             for(unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++){
-                bool isBoundaryPoint = false;
+                is_boundary_dofs[globalDOF] = false;
                 double x = dofLocation[globalDOF][0];
                 double y = dofLocation[globalDOF][1];
 
-                // Apply Dirichlet boundary condition on outer boundary = 0.0
                 if (mGridType == GridType::rectangular) {
                     if (x == 0.0 || x == 1.5 || y == -0.7 || y == 0.7) {
-                        isBoundaryPoint = true;
+                        is_boundary_dofs[globalDOF] = true;
                     }
                 }
                 else if (mGridType == GridType::circular) {
                     double r2 = sqrt((x - mCentreX) * (x - mCentreX) + (y - mCentreY) * (y - mCentreY));
                     if (fabs(r2 - mRadius) < tol) {
-                        isBoundaryPoint = true;
+                        is_boundary_dofs[globalDOF] = true;
                     }
                 }
                 else {
                     throw std::runtime_error("Chosen grid type is not implemented yet!");
                 }
-                if (isBoundaryPoint) {
-                    boundary_values[globalDOF] = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
-                }
+            }
+        }
+        for (unsigned int globalDOF = 0; globalDOF < totalDOFs; globalDOF++) {
+            if (is_boundary_dofs[globalDOF]) {
+                double x = dofLocation[globalDOF][0];
+                double y = dofLocation[globalDOF][1];
+                boundary_values[globalDOF] = f0 * R0 * R0 * a * a / 2.0 * (1.0 - y * y / (a * a) - std::pow((x - R0) / a + (x - R0) * (x - R0) / (2 * a * R0), 2.0));
             }
         }
 
