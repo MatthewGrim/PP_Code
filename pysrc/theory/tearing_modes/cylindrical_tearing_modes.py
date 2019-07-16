@@ -6,6 +6,10 @@ A solution for the growth rate of resistive tearing modes in circular plasmas. T
 based on:
 
 Tearing mode analysis in tokamaks, revisited - Y. Nishimura, J. D. Callen, and C. C. Hegna
+
+and
+
+Tearing mode in the cylindrical tokamak - H. P. Furth, P. H. Rutherford, and H. Selberg
 """
 
 import numpy as np
@@ -112,7 +116,7 @@ class TearingModeSolver(object):
         target_sol = self.psi_sol_upper[-1, 0]
 
         # Find matching lower solution
-        grad_0 = 100
+        grad_0 = 1e8
         self.psi_sol_lower = self.solve_to_bnd(0, grad_0, self.x_lower)
         if self.psi_sol_lower[-1, 0] > target_sol:
             self.bnd_max = grad_0
@@ -151,10 +155,9 @@ class TearingModeSolver(object):
         if iterations == num_iterations: print("WARNING: Bisection failed to converge!")
         
         # Estimate A
-        psi_rs = 0.5 * (self.psi_sol_lower[-1, 0] + self.psi_sol_upper[-1, 0])
-        self.A_lower = self.local_A_from_psi(self.x_lower[-1] - self.x_s, self.psi_sol_lower[-1, 0], psi_rs)
-        self.A_upper = self.local_A_from_psi(self.x_upper[0] - self.x_s, self.psi_sol_upper[-1, 0], psi_rs)
-        print("Psi_rs: {}".format(psi_rs))
+        self.psi_rs = 0.5 * (self.psi_sol_lower[-1, 0] + self.psi_sol_upper[-1, 0])
+        self.A_lower = self.local_A_from_psi(self.x_lower[-1] - self.x_s, self.psi_sol_lower[-1, 0], self.psi_rs)
+        self.A_upper = self.local_A_from_psi(self.x_upper[0] - self.x_s, self.psi_sol_upper[-1, 0], self.psi_rs)
 
     def find_delta_from_tearing_mode(self, plot_output):
         # Estimate initial conditions at tearing mode
@@ -268,14 +271,19 @@ class TearingModeSolver(object):
             self.x_upper = self.x_upper[::-1]
         else:
             self.x_lower = self.x_lower[::-1]
+
+        psi_max = max(np.max(self.psi_sol_lower[:, 0]), np.max(self.psi_sol_upper[:, 0]))
+        self.psi_rs = 0.5 * (self.psi_sol_lower[-1, 0] + self.psi_sol_upper[-1, 0]) / psi_max
+        self.psi_sol_lower[:, 0] /= psi_max
+        self.psi_sol_upper[:, 0] /= psi_max
         print("A_I, A_III: {}, {}".format(self.A_lower, self.A_upper))
         print('$\Delta$: {}'.format(self.A_upper - self.A_lower))
         print('$r_0 \Delta$: {}'.format(self.r_s * (self.A_upper - self.A_lower)))
-        psi_max = max(np.max(self.psi_sol_lower[:, 0]), np.max(self.psi_sol_upper[:, 0]))
+        print("Psi_rs: {}".format(self.psi_rs))
         if plot_output:
             fig, ax = plt.subplots(2, sharex=True)
-            ax[0].plot(self.x_lower, self.psi_sol_lower[:, 0] / psi_max)
-            ax[0].plot(self.x_upper, self.psi_sol_upper[:, 0] / psi_max )
+            ax[0].plot(self.x_lower, self.psi_sol_lower[:, 0])
+            ax[0].plot(self.x_upper, self.psi_sol_upper[:, 0])
             ax[0].set_ylabel('$\Psi$')
             ax[0].set_xlabel('x')
             ax[0].set_xlim([0.0, 2.0])
