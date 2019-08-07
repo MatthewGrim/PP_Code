@@ -15,59 +15,87 @@ Tearing mode in the cylindrical tokamak - H. P. Furth, P. H. Rutherford, and H. 
 import numpy as np
 import sys
 from scipy import integrate, interpolate
+from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
 from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
 class TearingModeSolver(object):
-    def __init__(self, k, m, B_z0, x_s, r_s, R, num_pts, integrate_from_bnds=False):
+    def __init__(self, m, x_s, num_pts, integrate_from_bnds=False):
         self.integrate_from_bnds = integrate_from_bnds
-        self.r_s = r_s
+        self.r_s = 1.0
         self.x_s = x_s
+        r_max = 2 * self.r_s
+        k = 1.0 / (20 * r_max)
+        R = r_max / k
+        # k = 1 / 20.0
+        # R = 20.0
+        print("kr_0: {}".format(k * r_max))
+        print("R: {}".format(R))
 
         # Generate simulation domain and integration points
         x_max = 2
-        r_max = x_max / self.x_s * self.r_s
         if self.integrate_from_bnds:
-            r = np.concatenate((np.linspace(1e-15, 0.01 * r_max, num_pts),
-                                np.linspace(0.01 * r_max, 0.99 * self.r_s, num_pts),
-                                np.linspace(0.99 * self.r_s, 1.01 * self.r_s, num_pts),
-                                np.linspace(1.01 * self.r_s, r_max, num_pts)))
-            x = np.concatenate((np.linspace(1e-15, 0.01 * x_max, num_pts),
+            x = np.concatenate((np.linspace(0.0, 0.01 * x_max, num_pts),
                                 np.linspace(0.01 * x_max, 0.99 * self.x_s, num_pts),
                                 np.linspace(0.99 * self.x_s, 1.01 * self.x_s, num_pts),
                                 np.linspace(1.01 * self.x_s, x_max, num_pts)))
-            self.x_lower = np.linspace(0.001, (1 - 1e-12) * self.x_s, num_pts) 
+            self.x_lower = np.linspace(0.0001, (1 - 1e-12) * self.x_s, num_pts) 
             self.x_upper = np.linspace((1 + 1e-12) * self.x_s, 2, num_pts) 
         else:
-            r = np.linspace(1e-15, r_max, num_pts)
-            x = np.linspace(1e-15, x_max, num_pts)
-            self.x_lower = np.linspace(0.001, (1 - 1e-12) * self.x_s, num_pts) 
-            self.x_upper = np.linspace((1 + 1e-12) * self.x_s, 1.99, num_pts) 
+            x = np.linspace(0.0, x_max, num_pts)
             self.x_lower = np.linspace(0.01, (1 - 1e-12) * self.x_s, num_pts) 
             self.x_upper = np.linspace((1 + 1e-12) * self.x_s, 1.99, num_pts)
+        x_to_r = self.r_s
+        r = x * x_to_r
 
         # Get input profiles
-        q_0 = m / k / (1 + self.x_s ** 2)
+        q_0 = m / (1 + self.x_s ** 2)
         b = x / (1 + x ** 2)
         q = q_0 * (1 + x ** 2)
+        # B_z0 = R * b / (r * q)
+        B_z0 = 1.0
 
-        factor = 1 / (x ** 2 * k ** 2 + m ** 2)
-        self.H = x ** 3 * factor * self.r_s
-        self.Hprime = (3 * x ** 2 - 2 * k * x ** 4 * factor) * self.r_s * factor
+        # plt.figure()
+        # plt.plot(r, B_z0)
+        # plt.show()
+
+        factor = 1 / (x ** 2 * k ** 2 + m ** 2 / x_to_r ** 2)
+        self.H = x ** 3 * factor * x_to_r
+        self.Hprime = (3 * x ** 2 - 2 * k ** 2 * x ** 4 * factor) * x_to_r * factor
+
+        # plt.figure()
+        # plt.plot(x, self.H)
+        # plt.plot(x, self.Hprime)
+        # plt.show()
 
         self.F = B_z0 / R * (1 - m/ q)
         self.Fprime = B_z0 * m / (R * q_0) * 2 * x * (1 + x ** 2) ** -2
         self.Fprime2 = B_z0 * m / (R * q_0) * (2 * (1 + x ** 2) ** -2 - 8 * x ** 2 * (1 + x ** 2) ** -3)
+
+        # plt.figure()
+        # plt.plot(x, self.F)
+        # plt.plot(x, self.Fprime)
+        # plt.plot(x, self.Fprime2)
+        # plt.show()
 
         factor = 1 / (r ** 2 * k ** 2 + m ** 2)
         self.g = k ** 2 * r ** 2 * factor 
         self.g *= r * self.F ** 2 + self.F * 2 * B_z0 * (k * r - m * b) * factor
         self.g += (m ** 2 - 1) * r * self.F ** 2 * factor
 
+        # plt.figure()
+        # plt.plot(x, self.g)
+        # plt.show()
+
         g1 = 1 / self.H * (self.g / self.F ** 2 + (self.H * self.Fprime2 + self.Hprime * self.Fprime) / self.F)
         g2 = self.Hprime / self.H
+
+        # plt.figure()
+        # plt.plot(x, g1)
+        # plt.plot(x, g2)
+        # plt.show()
 
         self.g1_interp = interpolate.interp1d(x, g1)
         self.g2_interp = interpolate.interp1d(x, g2)
@@ -84,16 +112,21 @@ class TearingModeSolver(object):
 
     def solve_to_bnd(self, psi, psi_deriv, x):
         def integration_model(c, t):
-            dpsi_dt = c[1]
-            d2psi_dt2 = -self.g2_interp(t) * c[1] + self.g1_interp(t) * c[0]
+            if t == 0:
+                dpsi_dt = c[1]
+                d2psi_dt2 = 0.0
+            else:
+                dpsi_dt = c[1]
+                d2psi_dt2 = -self.g2_interp(t) * c[1] + self.g1_interp(t) * c[0]
 
             return [dpsi_dt, d2psi_dt2]
 
-        return integrate.odeint(integration_model, [psi, psi_deriv], x, hmax=1e-3)
+        return integrate.odeint(integration_model, [psi, psi_deriv], x, hmax=1e-2)
 
     def local_psi(self, s, A):
         kappa = self.g1_interp(self.x_s)
-        psi = 1.0 + (kappa * s + 0.5 * kappa ** 2 * s ** 2) * np.log(np.abs(s)) + A * (s + 0.5 * kappa * s ** 2)
+        psi = 1.0 + (kappa * s + 0.5 * kappa ** 2 * s ** 2 - 0.75 * kappa ** 2 * s ** 2) * np.log(np.abs(s)) + \
+              A * (s + 0.5 * kappa * s ** 2 + 1.0 / 12.0 * kappa ** 2 * s ** 3)
 
         return psi
     
@@ -103,12 +136,15 @@ class TearingModeSolver(object):
 
         return psi_deriv
 
-    def local_A_from_psi(self, s, psi, psi_rs):
+    def fit_A_from_psi(self, s, psi_s, psi_sol):
         kappa = self.g1_interp(self.x_s)
-        print(s)
-        A = (psi - psi_rs * (1 - (kappa * s + 0.5 * kappa ** 2 * s ** 2) * np.log(np.abs(s)))) / (s + 0.5 * kappa * s ** 2)
-        
-        return A
+        def psi(s, A):
+            return psi_s * (1.0 + (kappa * s + 0.5 * kappa ** 2 * s ** 2 - 0.75 * kappa ** 2 * s ** 2) * np.log(np.abs(s))) + \
+                   A * (s + 0.5 * kappa * s ** 2 + 1.0 / 12.0 * kappa ** 2 * s ** 3)
+
+        popt, _ = curve_fit(psi, s, psi_sol)
+
+        return popt[0]
 
     def find_delta_from_boundaries(self, plot_output):
         # Get upper solution
@@ -116,48 +152,58 @@ class TearingModeSolver(object):
         target_sol = self.psi_sol_upper[-1, 0]
 
         # Find matching lower solution
-        grad_0 = 1e8
-        self.psi_sol_lower = self.solve_to_bnd(0, grad_0, self.x_lower)
+        grad_0 = 10
+        x_start = 0.0
+        psi_start = grad_0 * x_start
+        self.psi_sol_lower = self.solve_to_bnd(psi_start, grad_0, self.x_lower)
         if self.psi_sol_lower[-1, 0] > target_sol:
-            self.bnd_max = grad_0
             factor = 0.5
             while (self.psi_sol_lower[-1, 0] > target_sol):
+                self.bnd_max = grad_0
                 grad_0 *= factor
-                self.psi_sol_lower = self.solve_to_bnd(0, grad_0, self.x_lower)
+                psi_start = grad_0 * x_start
+                self.psi_sol_lower = self.solve_to_bnd(psi_start, grad_0, self.x_lower)
             self.bnd_min = grad_0
         else:
-            self.bnd_min = grad_0
             factor = 2.0
             while (self.psi_sol_lower[-1, 0] < target_sol):
+                self.bnd_min = grad_0
                 grad_0 *= factor
-                self.psi_sol_lower = self.solve_to_bnd(0, grad_0, self.x_lower)
+                psi_start = grad_0 * x_start
+                self.psi_sol_lower = self.solve_to_bnd(psi_start, grad_0, self.x_lower)
             self.bnd_max = grad_0
         print("Upper and lower bound for bisection: {}, {}".format(self.bnd_max, self.bnd_min))
         
         iterations = 0
-        num_iterations = 100
-        tol = 1e-14
+        num_iterations = 1000
+        tol = 1e-12
         while (iterations < num_iterations):
             grad_0 = 0.5 * (self.bnd_max + self.bnd_min)
             
             # Test for convergence
             if (np.abs(self.bnd_max - self.bnd_min) < tol):
                 break
-
-            self.psi_sol_lower = self.solve_to_bnd(0, grad_0, self.x_lower)
+    
+            psi_start = grad_0 * x_start
+            self.psi_sol_lower = self.solve_to_bnd(psi_start, grad_0, self.x_lower)
             if (self.psi_sol_lower[-1, 0] < target_sol):
                 self.bnd_min = grad_0  
             else:
                 self.bnd_max = grad_0
             iterations += 1
-
-        self.psi_sol_lower = self.solve_to_bnd(0, grad_0, self.x_lower)
+        psi_start = grad_0 * x_start
+        self.psi_sol_lower = self.solve_to_bnd(psi_start, grad_0, self.x_lower)
+        
         if iterations == num_iterations: print("WARNING: Bisection failed to converge!")
         
         # Estimate A
-        self.psi_rs = 0.5 * (self.psi_sol_lower[-1, 0] + self.psi_sol_upper[-1, 0])
-        self.A_lower = self.local_A_from_psi(self.x_lower[-1] - self.x_s, self.psi_sol_lower[-1, 0], self.psi_rs)
-        self.A_upper = self.local_A_from_psi(self.x_upper[0] - self.x_s, self.psi_sol_upper[-1, 0], self.psi_rs)
+        num_samples = 1000
+        psi_max = max(np.max(self.psi_sol_lower[:, 0]), np.max(self.psi_sol_upper[:, 0]))
+        self.psi_sol_lower[:, 0] /= psi_max
+        self.psi_sol_upper[:, 0] /= psi_max
+        psi_s = 0.5 * (self.psi_sol_lower[-1:, 0] + self.psi_sol_upper[-1:, 0])
+        self.A_lower = self.fit_A_from_psi(self.x_lower[-num_samples:] - self.x_s, psi_s, self.psi_sol_lower[-num_samples:, 0])
+        self.A_upper = self.fit_A_from_psi(self.x_upper[:num_samples] - self.x_s, psi_s, self.psi_sol_upper[-num_samples:, 0])
 
     def find_delta_from_tearing_mode(self, plot_output):
         # Estimate initial conditions at tearing mode
@@ -171,17 +217,16 @@ class TearingModeSolver(object):
         psi_deriv_upper = self.local_psi_derivative(self.x_upper[0] - self.x_s, self.A_upper)
         self.psi_sol_upper = self.solve_to_bnd(psi, psi_deriv_upper, self.x_upper)
         if self.psi_sol_upper[-1, 0] > 0.0:
-            self.bnd_max = self.A_upper
             while (self.psi_sol_upper[-1, 0] > 0.0):
-                # print(self.A_upper, self.psi_sol_upper[-1, 0])
+                self.bnd_max = self.A_upper
                 self.A_upper = -2 * np.abs(self.A_upper)
                 psi = self.local_psi(self.x_upper[0] - self.x_s, self.A_upper)
                 psi_deriv_upper = self.local_psi_derivative(self.x_upper[0] - self.x_s, self.A_upper)
                 self.psi_sol_upper = self.solve_to_bnd(psi, psi_deriv_upper, self.x_upper)
             self.bnd_min = self.A_upper
         else:
-            self.bnd_min = self.psi_sol_upper[-1, 0]
             while (self.psi_sol_upper[-1, 0] < 0.0):
+                self.bnd_min = self.A_upper
                 self.A_upper = 2 * np.abs(self.A_upper)
                 psi = self.local_psi(self.x_upper[0] - self.x_s, self.A_upper)
                 psi_deriv_upper = self.local_psi_derivative(self.x_upper[0] - self.x_s, self.A_upper)
@@ -231,7 +276,7 @@ class TearingModeSolver(object):
         else:
             self.axis_min = self.psi_sol_lower[-1, 0]
             while (self.psi_sol_lower[-1, 0] < 0.0):
-                self.A_lower = 2 * np.abs(self.A_lower)
+                self.A_lower = -2 * np.abs(self.A_lower)
                 psi = self.local_psi(self.x_lower[-1] - self.x_s, self.A_lower)
                 psi_deriv_lower = self.local_psi_derivative(self.x_lower[-1] - self.x_s, self.A_lower)
                 self.psi_sol_lower = self.solve_to_bnd(psi, psi_deriv_lower, self.x_lower[::-1])
@@ -273,12 +318,13 @@ class TearingModeSolver(object):
             self.x_lower = self.x_lower[::-1]
 
         psi_max = max(np.max(self.psi_sol_lower[:, 0]), np.max(self.psi_sol_upper[:, 0]))
-        self.psi_rs = 0.5 * (self.psi_sol_lower[-1, 0] + self.psi_sol_upper[-1, 0]) / psi_max
+        rs_idx = -1 if self.integrate_from_bnds else 0
+        self.psi_rs = 0.5 * (self.psi_sol_lower[rs_idx, 0] + self.psi_sol_upper[rs_idx, 0]) / psi_max
         self.psi_sol_lower[:, 0] /= psi_max
         self.psi_sol_upper[:, 0] /= psi_max
         print("A_I, A_III: {}, {}".format(self.A_lower, self.A_upper))
-        print('$\Delta$: {}'.format(self.A_upper - self.A_lower))
-        print('$r_0 \Delta$: {}'.format(self.r_s * (self.A_upper - self.A_lower)))
+        print('Delta: {}'.format(self.A_upper - self.A_lower))
+        print('r_0 Delta: {}'.format(self.r_s * (self.A_upper - self.A_lower)))
         print("Psi_rs: {}".format(self.psi_rs))
         if plot_output:
             fig, ax = plt.subplots(2, sharex=True)
@@ -295,6 +341,6 @@ class TearingModeSolver(object):
             plt.show()
 
 if __name__ == '__main__':
-    solver = TearingModeSolver(1, 2, 1.0, 1.0, 0.05, 1.0, 100000, integrate_from_bnds=False)
+    solver = TearingModeSolver(2, 0.2, 10000, integrate_from_bnds=True)
     solver.find_delta(plot_output=True)
 
