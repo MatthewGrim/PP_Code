@@ -15,17 +15,16 @@ from plasma_physics.pysrc.theory.tearing_modes.cylindrical_tearing_modes import 
 def compare_figures():
     x_s_points = np.linspace(0.2, 1.6, 8)
     m = 2
-    num_grid_pts = 10000
-    integrate_from_bnds = True
+    num_grid_pts = 100000
     
     fig, ax = plt.subplots(2, sharex=True)
     r_Deltas = list()
     psi_s = list()
     for x_s in x_s_points:
-        solver = TearingModeSolver(m, x_s, num_grid_pts, integrate_from_bnds=integrate_from_bnds)
+        solver = TearingModeSolverNormalised(m, x_s, num_grid_pts, delta=1e-10)
         solver.find_delta(plot_output=False)
 
-        r_Delta = solver.r_s * (solver.A_upper - solver.A_lower)
+        r_Delta = (solver.A_upper - solver.A_lower)
         r_Deltas.append(r_Delta)
         psi_s.append(solver.psi_rs)
 
@@ -40,22 +39,22 @@ def compare_figures():
         a.grid(linestyle='--')
 
     psi_s = np.loadtxt('psi_s_validation.csv', delimiter=',')
+    psi_profiles = np.loadtxt('psi_1_validation.csv', delimiter=',')
     ax[0].plot(psi_s[:, 0], psi_s[:, 1], linestyle='--', c='grey')
+    ax[0].scatter(psi_profiles[:, 0], psi_profiles[:, 1], c='grey', marker='+')
     delta_s = np.loadtxt('delta_validation.csv', delimiter=',')
     ax[1].plot(delta_s[:, 0], delta_s[:, 1], linestyle='--', c='grey')
     
+    ax[0].set_xlim([0.0, 2.0])
+    ax[0].set_ylim([0.0, 1.0])
     plt.show()
 
     r_Deltas = np.asarray(r_Deltas)
     psi_s = np.asarray(psi_s)
-    if integrate_from_bnds:
-        np.savetxt("rDelta_bnd", r_Deltas)
-        np.savetxt("psi_s_bnd", psi_s)
-    else:
-        np.savetxt("rDelta_tearing", r_Deltas)
-        np.savetxt("psi_s_tearing", psi_s)
+    np.savetxt("rDelta_bnd", r_Deltas)
+    np.savetxt("psi_s_bnd", psi_s)
 
-
+    
 if __name__ == '__main__':
     compare_figures()
 
