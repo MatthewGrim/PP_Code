@@ -10,7 +10,7 @@ Tearing mode in the cylindrical tokamak - H. P. Furth, P. H. Rutherford, and H. 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from plasma_physics.pysrc.theory.tearing_modes.cylindrical_tearing_modes import TearingModeSolver
+from plasma_physics.pysrc.theory.tearing_modes.cylindrical_tearing_modes import TearingModeSolverNormalised
 
 def compare_figures():
     x_s_points = np.linspace(0.2, 1.6, 8)

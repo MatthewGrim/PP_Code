@@ -92,14 +92,21 @@ class TearingModeSolverNormalised(object):
 
         return integrate.odeint(integration_model, [psi, psi_deriv], x, hmax=1e-2)
 
+    def get_psi(self, s, A, psi_s):
+        kappa = 0.0
+        return psi_s * (1.0 + (kappa * s + 0.5 * kappa ** 2 * s ** 2 - 0.75 * kappa ** 2 * s ** 2) * np.log(np.abs(s)) + \
+            A * (s + 0.5 * kappa * s ** 2 + 1.0 / 12.0 * kappa ** 2 * s ** 3))
+
     def fit_A_from_psi(self, s, psi_s, psi_sol):
         kappa = 0.0
         def psi(s, A):
-            return psi_s * (1.0 + (kappa * s + 0.5 * kappa ** 2 * s ** 2 - 0.75 * kappa ** 2 * s ** 2) * np.log(np.abs(s))) + \
-                   A * (s + 0.5 * kappa * s ** 2 + 1.0 / 12.0 * kappa ** 2 * s ** 3)
+            return psi_s * (1.0 + (kappa * s + 0.5 * kappa ** 2 * s ** 2 - 0.75 * kappa ** 2 * s ** 2) * np.log(np.abs(s)) + \
+                   A * (s + 0.5 * kappa * s ** 2 + 1.0 / 12.0 * kappa ** 2 * s ** 3))
+            # return psi_s + A * s
 
-        popt, _ = curve_fit(psi, s, psi_sol)
+        popt, pcov = curve_fit(psi, s, psi_sol)
 
+        print("Fit values: ", popt, pcov)
         return popt[0]
 
     def find_delta_from_boundaries(self, plot_output):
@@ -149,32 +156,32 @@ class TearingModeSolverNormalised(object):
         if iterations == num_iterations: print("WARNING: Bisection failed to converge!")
         
         # Estimate A
-        num_samples = 1000
+        num_samples = 100
         psi_max = max(np.max(self.psi_sol_lower[:, 0]), np.max(self.psi_sol_upper[:, 0]))
-        self.psi_sol_lower[:, 0] /= psi_max
-        self.psi_sol_upper[:, 0] /= psi_max
+        self.psi_sol_lower /= psi_max
+        self.psi_sol_upper /= psi_max
+        self.psi_rs = 0.25 * (self.psi_sol_lower[-1, 0] + self.delta * self.psi_sol_lower[-1, 1]) + 0.75 * (self.psi_sol_upper[-1, 0] - self.delta * self.psi_sol_upper[-1, 1])
         # assert self.psi_sol_lower[-1, 0] > self.psi_sol_upper[-1, 0], print(self.psi_sol_lower[-1, 0], self.psi_sol_upper[-1, 0])
-        psi_s = 0.5 * (self.psi_sol_lower[-1, 0] + self.delta * self.psi_sol_lower[-1, 1] + self.psi_sol_upper[-1, 0] - self.delta * self.psi_sol_upper[-1, 1])
-        self.A_lower = self.fit_A_from_psi(self.x_lower[-num_samples:] - self.x_s, psi_s, self.psi_sol_lower[-num_samples:, 0])
-        self.A_upper = self.fit_A_from_psi(self.x_upper[:num_samples] - self.x_s, psi_s, self.psi_sol_upper[-num_samples:, 0])
+        self.A_lower = self.fit_A_from_psi(self.x_lower[-num_samples:] - self.x_s, self.psi_rs, self.psi_sol_lower[-num_samples:, 0])
+        self.A_upper = self.fit_A_from_psi(self.x_upper[:num_samples] - self.x_s, self.psi_rs, self.psi_sol_upper[-num_samples:, 0][::-1])
 
     def find_delta(self, plot_output=False):
         self.find_delta_from_boundaries(plot_output)
         self.x_upper = self.x_upper[::-1]
 
-        psi_max = max(np.max(self.psi_sol_lower[:, 0]), np.max(self.psi_sol_upper[:, 0]))
-        rs_idx = -1
-        self.psi_rs = 0.5 * (self.psi_sol_lower[rs_idx, 0] + self.psi_sol_upper[rs_idx, 0]) / psi_max
-        self.psi_sol_lower[:, 0] /= psi_max
-        self.psi_sol_upper[:, 0] /= psi_max
         print("A_I, A_III: {}, {}".format(self.A_lower, self.A_upper))
         print('Delta: {}'.format(self.A_upper - self.A_lower))
         print('r_0 Delta: {}'.format(self.r_s * (self.A_upper - self.A_lower)))
         print("Psi_rs: {}".format(self.psi_rs))
         if plot_output:
+            num_samples = 100
+            psi_lower_local = self.get_psi(self.x_lower[-num_samples:] - self.x_s, self.A_lower, self.psi_rs)
+            psi_upper_local = self.get_psi(self.x_upper[-num_samples:] - self.x_s, self.A_upper, self.psi_rs)
             fig, ax = plt.subplots(2, sharex=True)
             ax[0].plot(self.x_lower, self.psi_sol_lower[:, 0])
             ax[0].plot(self.x_upper, self.psi_sol_upper[:, 0])
+            ax[0].plot(self.x_lower[-num_samples:], psi_lower_local, linestyle='--', c='r')
+            ax[0].plot(self.x_upper[-num_samples:], psi_upper_local, linestyle='--', c='r')
             ax[0].set_ylabel('$\Psi$')
             ax[0].set_xlabel('x')
             ax[0].set_xlim([0.0, 2.0])
@@ -247,6 +254,11 @@ class TearingModeSolver(object):
             return [dpsi_dt, d2psi_dt2]
 
         return integrate.odeint(integration_model, [psi, psi_deriv], x, hmax=1e-2)
+    
+    def get_psi(self, s, A, psi_s):
+        kappa = -PhysicalConstants.mu_0 * self.r_to_j_phi_deriv(self.r_instability) * self.r_to_q(self.r_instability)
+        kappa /= self.r_to_B_theta(self.r_instability) * self.r_to_q_deriv(self.r_instability)
+        return psi_s * (1.0 + kappa * s * np.log(np.abs(s))) + A * (s + 0.5 * kappa * s ** 2)
 
     def fit_A_from_psi(self, s, psi_s, psi_sol):
         kappa = -PhysicalConstants.mu_0 * self.r_to_j_phi_deriv(self.r_instability) * self.r_to_q(self.r_instability)
@@ -254,17 +266,15 @@ class TearingModeSolver(object):
         def psi(s, A):
             return psi_s * (1.0 + kappa * s * np.log(np.abs(s))) + A * (s + 0.5 * kappa * s ** 2)
 
-        popt, _ = curve_fit(psi, s, psi_sol)
-
+        popt, pcov = curve_fit(psi, s, psi_sol)
+        
+        print(popt, pcov)
         return popt[0]
 
     def find_delta_from_boundaries(self, plot_output):
         # Get upper solution
         self.psi_sol_upper = self.solve_to_bnd(0, -1, self.r_upper[::-1])
         target_sol = self.psi_sol_upper[-1, 0] - self.delta * self.psi_sol_upper[-1, 1]
-        plt.figure()
-        plt.plot(self.r_upper[::-1], self.psi_sol_upper)
-        plt.show()
 
         # Find matching lower solution
         grad_0 = 10
@@ -308,13 +318,13 @@ class TearingModeSolver(object):
         if iterations == num_iterations: print("WARNING: Bisection failed to converge!")
         
         # Estimate A
-        num_samples = 1000
+        num_samples = 100
         psi_max = max(np.max(self.psi_sol_lower[:, 0]), np.max(self.psi_sol_upper[:, 0]))
         self.psi_sol_lower[:, 0] /= psi_max
         self.psi_sol_upper[:, 0] /= psi_max
         psi_s = 0.5 * (self.psi_sol_lower[-1, 0] + self.delta * self.psi_sol_lower[-1, 1] + self.psi_sol_upper[-1, 0] - self.delta * self.psi_sol_upper[-1, 1])
         self.A_lower = self.fit_A_from_psi(self.r_lower[-num_samples:] - self.r_instability, psi_s, self.psi_sol_lower[-num_samples:, 0])
-        self.A_upper = self.fit_A_from_psi(self.r_upper[:num_samples] - self.r_instability, psi_s, self.psi_sol_upper[-num_samples:, 0])
+        self.A_upper = self.fit_A_from_psi(self.r_upper[:num_samples] - self.r_instability, psi_s, self.psi_sol_upper[-num_samples:, 0][::-1])
 
     def find_delta(self, plot_output=False):
         self.find_delta_from_boundaries(plot_output)
@@ -330,9 +340,14 @@ class TearingModeSolver(object):
         print('r_0 Delta: {}'.format(self.r_instability * (self.A_upper - self.A_lower)))
         print("Psi_rs: {}".format(self.psi_rs))
         if plot_output:
+            num_samples = 100
+            psi_lower_local = self.get_psi(self.r_lower[-num_samples:] - self.r_instability, self.A_lower, self.psi_rs)
+            psi_upper_local = self.get_psi(self.r_upper[-num_samples:] - self.r_instability, self.A_upper, self.psi_rs)
             fig, ax = plt.subplots(2, sharex=True)
             ax[0].plot(self.r_lower, self.psi_sol_lower[:, 0])
             ax[0].plot(self.r_upper, self.psi_sol_upper[:, 0])
+            ax[0].plot(self.r_lower[-num_samples:], psi_lower_local, linestyle='--', c='r')
+            ax[0].plot(self.r_upper[-num_samples:], psi_upper_local, linestyle='--', c='r')
             ax[0].set_ylabel('$\Psi$')
             ax[0].set_xlabel('r')
             ax[0].set_xlim([0.0, self.r_max])
