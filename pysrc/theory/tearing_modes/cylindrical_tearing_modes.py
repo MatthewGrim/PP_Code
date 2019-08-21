@@ -105,8 +105,8 @@ class TearingModeSolverNormalised(object):
             # return psi_s + A * s
 
         popt, pcov = curve_fit(psi, s, psi_sol)
-
-        print("Fit values: ", popt, pcov)
+        
+        print("Error in fit for A: {}".format(pcov[0]))
         return popt[0]
 
     def find_delta_from_boundaries(self, plot_output):
@@ -194,11 +194,10 @@ class TearingModeSolverNormalised(object):
 
 
 class TearingModeSolver(object):
-    def __init__(self, m, r, r_max, R, B_theta, B_z, j_phi, q, num_pts, delta=1e-12):
+    def __init__(self, m, r, r_max, B_theta, B_z, j_phi, q, num_pts, delta=1e-12):
         self.delta = delta
         self.m = m
         self.r_max = r_max
-        self.R = R
         
         # Find instability location
         self.r_to_q = interpolate.interp1d(r, q)
@@ -220,10 +219,19 @@ class TearingModeSolver(object):
         q_deriv = np.gradient(q, r)
         self.r_to_q_deriv = interpolate.interp1d(r, q_deriv)
 
-        fig, ax = plt.subplots(2)
-        ax[0].plot(r, j_phi_deriv)
-        ax[1].plot(r, q_deriv)
-        plt.show()
+        # fig, ax = plt.subplots(2)
+        # ax[0].plot(r, j_phi_deriv)
+        # ax[1].plot(r, q_deriv)
+        # plt.show()
+
+        g2 = 1.0 / r
+        g1 = self.r_to_j_phi_deriv(r)
+        g1 /= self.r_to_B_theta(r) / PhysicalConstants.mu_0 * (1 - self.r_to_q(r) / self.m)
+        g1 += self.m ** 2 / r ** 2
+        # plt.figure()
+        # plt.plot(r, g1)
+        # plt.plot(r, g2)
+        # plt.show()
 
         # Set up output variables
         self.bnd_max = None
@@ -235,7 +243,7 @@ class TearingModeSolver(object):
 
     def get_g1_and_g2(self, r):
         g2 = 1.0 / r
-        g1 = -self.r_to_j_phi_deriv(r)
+        g1 = self.r_to_j_phi_deriv(r)
         g1 /= self.r_to_B_theta(r) / PhysicalConstants.mu_0 * (1 - self.r_to_q(r) / self.m)
         g1 += self.m ** 2 / r ** 2
 
@@ -243,7 +251,7 @@ class TearingModeSolver(object):
 
     def solve_to_bnd(self, psi, psi_deriv, x):
         def integration_model(c, t):
-            if t < 1e-7:
+            if t < 1e-10:
                 dpsi_dt = c[1]
                 d2psi_dt2 = 0.0
             else:
@@ -268,7 +276,7 @@ class TearingModeSolver(object):
 
         popt, pcov = curve_fit(psi, s, psi_sol)
         
-        print(popt, pcov)
+        print("Error in fit for A: {}".format(pcov[0]))
         return popt[0]
 
     def find_delta_from_boundaries(self, plot_output):
@@ -277,7 +285,7 @@ class TearingModeSolver(object):
         target_sol = self.psi_sol_upper[-1, 0] - self.delta * self.psi_sol_upper[-1, 1]
 
         # Find matching lower solution
-        grad_0 = 10
+        grad_0 = 1e4
         r_start = 0.0
         psi_start = 0.0
         self.psi_sol_lower = self.solve_to_bnd(psi_start, grad_0, self.r_lower)
@@ -376,9 +384,11 @@ if __name__ == '__main__':
         j_phi = factor * dat[:, 2]
         B_z = dat[:, 3]
         B_theta = dat[:, 4]
+        psi_n = dat[:, 5]
+        r_to_psin = interpolate.interp1d(r, psi_n)
+        
         q = r * B_z / (R * B_theta)
         q[0] = q[1]
-
         fig, ax = plt.subplots(2, 2, sharex=True)
 
         ax[0, 0].plot(r, B_z)
@@ -394,6 +404,20 @@ if __name__ == '__main__':
         plt.show()
 
         r_max = r[-1]
-        R = R[0]
-        solver = TearingModeSolver(m, r, r_max, R, B_theta, B_z, j_phi, q, num_pts, delta=1e-12)
+        solver = TearingModeSolver(m, r, r_max, B_theta, B_z, j_phi, q, num_pts, delta=1e-12)
         solver.find_delta(plot_output=True)
+
+        psin_lower = r_to_psin(solver.r_lower)
+        psin_upper = r_to_psin(solver.r_upper)
+        fig, ax = plt.subplots(2, sharex=True)
+        ax[0].plot(psin_lower, solver.psi_sol_lower[:, 0])
+        ax[0].plot(psin_upper, solver.psi_sol_upper[:, 0])
+        ax[0].set_ylabel('$\Psi$')
+        ax[0].set_xlabel('$\hat \Psi$')
+        ax[0].set_xlim([0.0, 1.0])
+        
+        ax[1].plot(psin_lower, solver.psi_sol_lower[:, 1])
+        ax[1].plot(psin_upper, solver.psi_sol_upper[:, 1])
+        ax[1].set_ylabel('$\\frac{\partial \Psi}{\partial r}$')
+        ax[1].set_xlabel('$\hat \Psi$')
+        plt.show()
