@@ -328,11 +328,11 @@ class TearingModeSolver(object):
         # Estimate A
         num_samples = 100
         psi_max = max(np.max(self.psi_sol_lower[:, 0]), np.max(self.psi_sol_upper[:, 0]))
-        self.psi_sol_lower[:, 0] /= psi_max
-        self.psi_sol_upper[:, 0] /= psi_max
         psi_s = 0.5 * (self.psi_sol_lower[-1, 0] + self.delta * self.psi_sol_lower[-1, 1] + self.psi_sol_upper[-1, 0] - self.delta * self.psi_sol_upper[-1, 1])
-        self.A_lower = self.fit_A_from_psi(self.r_lower[-num_samples:] - self.r_instability, psi_s, self.psi_sol_lower[-num_samples:, 0])
-        self.A_upper = self.fit_A_from_psi(self.r_upper[:num_samples] - self.r_instability, psi_s, self.psi_sol_upper[-num_samples:, 0][::-1])
+        self.psi_sol_lower[:, 0] /= psi_s
+        self.psi_sol_upper[:, 0] /= psi_s
+        self.A_lower = self.fit_A_from_psi(self.r_lower[-num_samples:] - self.r_instability, 1.0, self.psi_sol_lower[-num_samples:, 0])
+        self.A_upper = self.fit_A_from_psi(self.r_upper[:num_samples] - self.r_instability, 1.0, self.psi_sol_upper[-num_samples:, 0][::-1])
 
     def find_delta(self, plot_output=False):
         self.find_delta_from_boundaries(plot_output)
@@ -343,8 +343,9 @@ class TearingModeSolver(object):
         self.psi_rs = 0.5 * (self.psi_sol_lower[rs_idx, 0] + self.psi_sol_upper[rs_idx, 0]) / psi_max
         self.psi_sol_lower[:, 0] /= psi_max
         self.psi_sol_upper[:, 0] /= psi_max
+        self.delta = self.A_upper - self.A_lower
         print("A_I, A_III: {}, {}".format(self.A_lower, self.A_upper))
-        print('Delta: {}'.format(self.A_upper - self.A_lower))
+        print('Delta: {}'.format(self.delta))
         print('r_0 Delta: {}'.format(self.r_instability * (self.A_upper - self.A_lower)))
         print("Psi_rs: {}".format(self.psi_rs))
         if plot_output:
@@ -368,56 +369,8 @@ class TearingModeSolver(object):
             
 
 if __name__ == '__main__':
-    normalised = False
     num_pts = 100000
     m = 2
-    if normalised:
-        solver = TearingModeSolverNormalised(m, 1.0, num_pts)
-        solver.find_delta(plot_output=True)
-    else:
-        # Get profiles
-        dat = np.loadtxt(os.path.join('000-Original', 'postproc', 'exprs_averaged_s00000.dat'))
+    solver = TearingModeSolverNormalised(m, 1.0, num_pts)
+    solver.find_delta(plot_output=True)
 
-        factor = 1.0
-        r = dat[:, 0]
-        R = dat[:, 1]
-        j_phi = factor * dat[:, 2]
-        B_z = dat[:, 3]
-        B_theta = dat[:, 4]
-        psi_n = dat[:, 5]
-        r_to_psin = interpolate.interp1d(r, psi_n)
-        
-        q = r * B_z / (R * B_theta)
-        q[0] = q[1]
-        fig, ax = plt.subplots(2, 2, sharex=True)
-
-        ax[0, 0].plot(r, B_z)
-        ax[0, 0].set_ylabel('B_tor')
-        ax[1, 0].plot(r, B_theta)
-        ax[1, 0].set_ylabel('B_theta')
-        ax[0, 1].plot(r, j_phi)
-        ax[0, 1].set_ylabel('j_phi')
-        ax[1, 1].plot(r, q)
-        ax[1, 1].set_ylabel('q')
-        ax[0, 0].set_xlim([0.0, 1.0])
-
-        plt.show()
-
-        r_max = r[-1]
-        solver = TearingModeSolver(m, r, r_max, B_theta, B_z, j_phi, q, num_pts, delta=1e-12)
-        solver.find_delta(plot_output=True)
-
-        psin_lower = r_to_psin(solver.r_lower)
-        psin_upper = r_to_psin(solver.r_upper)
-        fig, ax = plt.subplots(2, sharex=True)
-        ax[0].plot(psin_lower, solver.psi_sol_lower[:, 0])
-        ax[0].plot(psin_upper, solver.psi_sol_upper[:, 0])
-        ax[0].set_ylabel('$\Psi$')
-        ax[0].set_xlabel('$\hat \Psi$')
-        ax[0].set_xlim([0.0, 1.0])
-        
-        ax[1].plot(psin_lower, solver.psi_sol_lower[:, 1])
-        ax[1].plot(psin_upper, solver.psi_sol_upper[:, 1])
-        ax[1].set_ylabel('$\\frac{\partial \Psi}{\partial r}$')
-        ax[1].set_xlabel('$\hat \Psi$')
-        plt.show()
