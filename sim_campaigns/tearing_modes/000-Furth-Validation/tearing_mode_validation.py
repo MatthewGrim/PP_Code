@@ -51,8 +51,6 @@ def compare_figures():
 
     r_Deltas = np.asarray(r_Deltas)
     psi_s = np.asarray(psi_s)
-    np.savetxt("rDelta_bnd", r_Deltas)
-    np.savetxt("psi_s_bnd", psi_s)
 
     
 if __name__ == '__main__':
