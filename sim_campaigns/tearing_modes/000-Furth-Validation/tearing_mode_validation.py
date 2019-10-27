@@ -47,6 +47,7 @@ def compare_figures():
     
     ax[0].set_xlim([0.0, 2.0])
     ax[0].set_ylim([0.0, 1.0])
+    plt.savefig('furth_validation')
     plt.show()
 
     r_Deltas = np.asarray(r_Deltas)

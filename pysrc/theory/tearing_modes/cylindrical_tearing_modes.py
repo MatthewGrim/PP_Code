@@ -6,10 +6,8 @@ A solution for the growth rate of resistive tearing modes in circular plasmas. T
 based on:
 
 Tearing mode analysis in tokamaks, revisited - Y. Nishimura, J. D. Callen, and C. C. Hegna
-
-and
-
 Tearing mode in the cylindrical tokamak - H. P. Furth, P. H. Rutherford, and H. Selberg
+Tokomaks - J. Wesson (section 6.8 to 6.9)
 """
 
 import numpy as np
@@ -219,19 +217,10 @@ class TearingModeSolver(object):
         q_deriv = np.gradient(q, r)
         self.r_to_q_deriv = interpolate.interp1d(r, q_deriv)
 
-        # fig, ax = plt.subplots(2)
-        # ax[0].plot(r, j_phi_deriv)
-        # ax[1].plot(r, q_deriv)
-        # plt.show()
-
         g2 = 1.0 / r
         g1 = self.r_to_j_phi_deriv(r)
         g1 /= self.r_to_B_theta(r) / PhysicalConstants.mu_0 * (1 - self.r_to_q(r) / self.m)
         g1 += self.m ** 2 / r ** 2
-        # plt.figure()
-        # plt.plot(r, g1)
-        # plt.plot(r, g2)
-        # plt.show()
 
         # Set up output variables
         self.bnd_max = None
@@ -251,7 +240,7 @@ class TearingModeSolver(object):
 
     def solve_to_bnd(self, psi, psi_deriv, x):
         def integration_model(c, t):
-            if t < 1e-10:
+            if t < 1e-6:
                 dpsi_dt = c[1]
                 d2psi_dt2 = 0.0
             else:
@@ -279,7 +268,29 @@ class TearingModeSolver(object):
         print("Error in fit for A: {}".format(pcov[0]))
         return popt[0]
 
+    def get_gamma(self):
+        """
+        Get gamma normalised by density and resistivity.
+        """
+        B_theta = self.r_to_B_theta(self.r_instability)
+        q_deriv = self.r_to_q_deriv(self.r_instability)
+        q = self.r_to_q(self.r_instability)
+
+        gamma = self.delta ** 0.8
+        gamma *= (q_deriv / (self.r_instability * q)) ** 0.4
+        gamma *= (self.m * B_theta / np.sqrt(PhysicalConstants.mu_0)) ** 0.4
+        gamma /= PhysicalConstants.mu_0 ** 0.6
+        gamma *= 0.55
+
+        self.gamma = gamma
+
     def find_delta_from_boundaries(self, plot_output):
+        """
+        Solve delta from boundaries using a shooting algorithm
+        
+        Arguments:
+            plot_output {bool} 
+        """
         # Get upper solution
         self.psi_sol_upper = self.solve_to_bnd(0, -1, self.r_upper[::-1])
         target_sol = self.psi_sol_upper[-1, 0] - self.delta * self.psi_sol_upper[-1, 1]
@@ -312,7 +323,9 @@ class TearingModeSolver(object):
             grad_0 = 0.5 * (self.bnd_max + self.bnd_min)
             
             # Test for convergence
-            if (np.abs(self.bnd_max - self.bnd_min) < tol):
+            diff = np.abs(self.bnd_max - self.bnd_min) / np.abs(self.bnd_max)
+            print("Iteration: {}, Difference: {}:".format(iterations, diff))
+            if (diff < tol):
                 break
     
             self.psi_sol_lower = self.solve_to_bnd(psi_start, grad_0, self.r_lower)
@@ -323,11 +336,13 @@ class TearingModeSolver(object):
             iterations += 1
         self.psi_sol_lower = self.solve_to_bnd(psi_start, grad_0, self.r_lower)
         
-        if iterations == num_iterations: print("WARNING: Bisection failed to converge!")
+        if iterations == num_iterations: 
+            print("WARNING: Bisection failed to converge!")
+        else:
+            print("Bisection converged in {} iterations: {}".format(iterations, grad_0))
         
         # Estimate A
         num_samples = 100
-        psi_max = max(np.max(self.psi_sol_lower[:, 0]), np.max(self.psi_sol_upper[:, 0]))
         psi_s = 0.5 * (self.psi_sol_lower[-1, 0] + self.delta * self.psi_sol_lower[-1, 1] + self.psi_sol_upper[-1, 0] - self.delta * self.psi_sol_upper[-1, 1])
         self.psi_sol_lower[:, 0] /= psi_s
         self.psi_sol_upper[:, 0] /= psi_s
