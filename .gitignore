@@ -6,8 +6,13 @@ node_modules
 **/data/*
 **/mesh_data/*
 **/results/*
+**/build/*
+**/gtest/*
 
 # --- File types ---
+*.tar
+*.tar.gz
+*.zip
 *.code-workspace
 *.DS_Store
 *.sublime*
