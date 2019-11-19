@@ -19,7 +19,7 @@ from plasma_physics.pysrc.theory.tearing_modes.cylindrical_tearing_modes import 
 
 
 def get_stability_condition(plot_results=True):
-    current_factors = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    current_factors = [0.6, 0.7, 0.8, 0.9, 1.0]
     colors = cm.copper(np.linspace(0.0, 1.0, len(current_factors)))
 
     # Get profiles
@@ -57,50 +57,24 @@ def get_stability_condition(plot_results=True):
         plt.savefig('input_profiles')
         plt.show()
 
-    r_max = r[-1]
-    deltas = list()
-    alphas = list()
-    for factor in current_factors:
-        j_phi_sim = j_phi * factor
-
-        solver = TearingModeSolver(m, r, r_max, B_theta, B_z, j_phi_sim, q, num_pts, delta=1e-12)
-        solver.find_delta(plot_output=False)
-
-        psin_lower = r_to_psin(solver.r_lower)
-        psin_upper = r_to_psin(solver.r_upper)
-        
-        if plot_results:
-            fig, ax = plt.subplots(2, sharex=True)
-            ax[0].plot(psin_lower, solver.psi_sol_lower[:, 0], label='solution from axis')
-            ax[0].plot(psin_upper, solver.psi_sol_upper[:, 0], label='solution from boundary')
-
-            # Plot comparison solution if it exists        
-            validation_file = 'flux_validation_vc_{}.csv'.format(factor)
-            if os.path.exists(validation_file):
-                flux_validation = np.loadtxt(validation_file, delimiter=',')
-                flux_validation[:, 1] /= np.max(flux_validation[:, 1]) 
-                flux_validation[:, 1] *= np.max(solver.psi_sol_lower[:, 0])
-                ax[0].plot(flux_validation[:, 0], flux_validation[:, 1], linestyle='--', label='JOREK')
-
-            ax[0].set_ylabel('$\Psi_1$', fontsize=fontsize)
-            ax[0].legend()
-            ax[0].set_xlim([0.0, 1.0])
-            
-            ax[1].plot(psin_lower, solver.psi_sol_lower[:, 1])
-            ax[1].plot(psin_upper, solver.psi_sol_upper[:, 1])
-            ax[1].set_ylabel('$\\frac{\partial \Psi_1}{\partial r}$', fontsize=fontsize)
-            ax[1].set_xlabel('$\hat \Psi$', fontsize=fontsize)
-            plt.show()
-
-        deltas.append(solver.delta)
-        alphas.append(1 - factor)
-
-    np.savetxt('deltas', np.asarray(deltas))
-    deltas = np.loadtxt('deltas')
     plt.figure()
-    plt.plot(alphas, deltas)
-    plt.axvline(0.346, linestyle='--', color='grey', label='Linear stability boundary')
-    plt.axvline(0.25, linestyle='--', color='g', label='JOREK stability boundary')
+    for epsilon in [1e-12, 1e-8, 1e-6, 1e-4]:
+        r_max = r[-1]
+        deltas = list()
+        alphas = list()
+
+        for factor in current_factors:
+            j_phi_sim = j_phi * factor
+
+            solver = TearingModeSolver(m, r, r_max, B_theta, B_z, j_phi_sim, q, num_pts, delta=epsilon)
+            solver.find_delta(plot_output=False)
+
+            deltas.append(solver.delta)
+            alphas.append(1 - factor)
+
+        plt.plot(alphas, deltas, label="$\epsilon$={}".format(epsilon))
+        np.savetxt('deltas_{}.dat'.format(epsilon), np.stack((alphas, deltas), axis=-1))
+    
     plt.grid(linestyle='--')
     plt.ylabel('$\Delta\'$', fontsize=fontsize)
     plt.xlabel('$\\alpha$', fontsize=fontsize)
@@ -115,5 +89,5 @@ if __name__ == '__main__':
     m = 2
     fontsize=22
 
-    get_stability_condition(plot_results=False)
+    get_stability_condition(plot_results=True)
 

@@ -28,8 +28,8 @@ def compare_figures():
         r_Deltas.append(r_Delta)
         psi_s.append(solver.psi_rs)
 
-        ax[0].plot(solver.x_lower, solver.psi_sol_lower[:, 0], c='k')
-        ax[0].plot(solver.x_upper, solver.psi_sol_upper[:, 0], c='k')
+        ax[0].plot(solver.r_lower, solver.psi_sol_lower[:, 0], c='k')
+        ax[0].plot(solver.r_upper, solver.psi_sol_upper[:, 0], c='k')
     ax[0].plot(x_s_points, psi_s, linestyle='--', c='k')
     ax[1].plot(x_s_points, r_Deltas)
     ax[0].set_ylabel("$\hat \Psi$")

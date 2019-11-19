@@ -96,7 +96,7 @@ def get_stability_condition(plot_results=True):
         alphas.append(1 - factor)
 
     np.savetxt('deltas', np.asarray(deltas))
-    deltas = np.loadtxt('deltas')
+
     plt.figure()
     plt.plot(alphas, deltas)
     plt.axvline(0.346, linestyle='--', color='grey', label='Linear stability boundary')
@@ -113,7 +113,7 @@ def get_stability_condition(plot_results=True):
 if __name__ == '__main__':
     num_pts = 200000
     m = 2
-    fontsize=22
+    fontsize=16
 
     get_stability_condition(plot_results=False)
 
