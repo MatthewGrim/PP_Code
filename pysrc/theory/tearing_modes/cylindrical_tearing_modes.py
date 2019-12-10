@@ -328,13 +328,14 @@ class TearingModeSolver(TearingModeSolverBase):
             
 
 class MatsuokaTearingModeSolver(TearingModeSolverBase):
-    def __init__(self, m, r, r_max, B_theta, B_z, j_phi, iota_plasma, iota_ext, iota_tot, num_pts, n=1, delta=1e-12):
+    def __init__(self, m, r, r_max, B_theta, B_z, j_phi, iota_plasma, iota_ext, num_pts, n=1, delta=1e-12):
         self.delta = delta
         self.n = n
         self.m = m
         self.r_max = r_max
         
         # Find instability location
+        iota_tot = iota_plasma + iota_ext
         self.r_to_iota_tot = interpolate.interp1d(r, iota_tot)
         self.iota_tot_to_r = interpolate.interp1d(iota_tot, r)
         self.r_instability = self.iota_tot_to_r(1.0 / m)
@@ -363,12 +364,6 @@ class MatsuokaTearingModeSolver(TearingModeSolverBase):
         self.r_to_q = interpolate.interp1d(r, q)
         q_deriv = np.gradient(q, r)
         self.r_to_q_deriv = interpolate.interp1d(r, q_deriv)
-
-        g2 = 1.0 / r
-        g1 = 3 * self.r_to_iota_plasma_deriv(r) + r * self.r_to_iota_plasma_second_deriv(r)
-        nu = -self.n / self.m + self.r_to_iota_plasma(r) + self.r_to_iota_ext(r)
-        g1 /= nu
-        g1 += self.m ** 2 / r ** 2
 
         # Set up output variables
         self.bnd_max = None
