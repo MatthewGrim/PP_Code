@@ -21,7 +21,7 @@ from plasma_physics.pysrc.utils.physical_constants import PhysicalConstants
 
 
 class NewcombSolver(object):
-    def __init__(self, m, r, r_max, f, g, a, b, n=1, f_deriv=None, singularity_func=None, num_crit_points=1001, cross_tol=1e-14):
+    def __init__(self, m, r, r_max, f, g, a, b, n=1, f_deriv=None, singularity_func=None, num_crit_points=1001, cross_tol=1e-9, verbose=False):
         """
         Initialisation routine for Newcomb solver
         
@@ -50,11 +50,14 @@ class NewcombSolver(object):
             self.f_deriv = f_deriv
         self.singularity_func = self.f if singularity_func is None else singularity_func
 
+        self.m = m
+        self.n = n
         self.a = a
         self.b = b
         self.r_crossings = list()
         self.num_crit_points = num_crit_points
         self.cross_tol = cross_tol
+        self.verbose = verbose
 
     def find_zero_crossings_in_f(self):
         """
@@ -62,10 +65,10 @@ class NewcombSolver(object):
         """
         sign = None
         r_prev = None
+        r_crossing_prev = -1
         for i, r_local in enumerate(self.r):
             f_val = self.singularity_func(r_local)
-            # if i == 0:
-            #     continue
+
             if i == 0:
                 sign = np.sign(f_val)
 
@@ -87,9 +90,12 @@ class NewcombSolver(object):
                     
                     iterations += 1
                 
-                if r_crossing < self.a:
+                if r_crossing <= self.a and not np.isclose(r_crossing, r_crossing_prev, atol=1e-3):
                     self.r_crossings.append(r_crossing)
-                print('Zero crossing found at r = {}'.format(r_crossing))
+                    r_crossing_prev = r_crossing
+
+                if self.verbose:
+                  print('Zero crossing found at r = {}'.format(r_crossing))
 
             sign = np.sign(f_val)
             r_prev = r_local
@@ -104,16 +110,24 @@ class NewcombSolver(object):
             r_crit -- points at which to evaluate eta
         """
         def integration_model(c, t):
-            if t < r_start + 1e-8:
+            if t < 1e-6:
+                dpsi_dt = self.m * t ** (self.m - 1)
+                d2psi_dt2 = self.m * (self.m - 1) * t ** (self.m - 2) if self.m != 1 else 0.0
+            elif np.abs(t - r_start) < 1e-6:
                 dpsi_dt = c[1]
                 d2psi_dt2 = 0.0
             else:
                 dpsi_dt = c[1]
-                d2psi_dt2 = (self.f_deriv(t) * c[1] + self.g(t) * c[0]) / self.f(t)
+                d2psi_dt2 = (-self.f_deriv(t) * c[1] + self.g(t) * c[0]) / self.f(t)
             
             return [dpsi_dt, d2psi_dt2]
 
-        return integrate.odeint(integration_model, [0, 1.0], r_crit, hmax=1e-2)
+        if r_start == 0.0:
+            return integrate.odeint(integration_model, [0, 0.0], r_crit, hmax=1e-2)
+        elif r_start == self.b:
+            return integrate.odeint(integration_model, [0, -1.0], r_crit, hmax=1e-2)
+        else:
+            return integrate.odeint(integration_model, [0, 1.0], r_crit, hmax=1e-2)
 
     def determine_stability(self, plot_results=True):
         """
@@ -123,20 +137,30 @@ class NewcombSolver(object):
             plot_results {bool} -- determine whether to plot results
         """
         r_min = self.r[0]
+        r_max = self.r[-1]
         unstable = False
-        print(self.r_crossings)
-        for r_crossing in self.r_crossings:
-            r_crit = np.linspace(r_min, r_crossing - self.cross_tol, self.num_crit_points)
-            eta = self.integrate_eta(r_crit, r_min)
-            unstable = np.any(eta[:, 0] < 0.0)
-            if unstable:
-                print('Screw pinch is unstable between {} and {}'.format(r_min, r_crossing))
+        for i, r_crossing in enumerate(self.r_crossings):
+            if i == 0 or len(self.r_crossings) > 2:
+                r_crit = np.linspace(r_min + self.cross_tol, r_crossing - self.cross_tol, self.num_crit_points)
+                eta = self.integrate_eta(r_crit, r_min)
+            else:
+                r_crit = np.linspace(r_max, self.r_crossings[i - 1] + self.cross_tol, self.num_crit_points)
+                eta = self.integrate_eta(r_crit, r_max)
+
+            if np.any(eta[:, 0] < 0.0):
+                unstable = True
+
+                if self.verbose:
+                    print('Screw pinch is unstable between {} and {}'.format(r_min, r_crossing))
 
             if plot_results:
-                plt.figure()
-                plt.plot(r_crit, eta[:, 0])
-                plt.ylabel('$\eta$')
-                plt.xlabel('$r$')
+                fig, ax = plt.subplots(2)
+                ax[0].plot(r_crit, eta[:, 0])
+                ax[0].set_ylabel('$\eta$')
+                ax[0].set_xlabel('$r$')
+                ax[1].plot(r_crit, eta[:, 1])
+                ax[1].set_ylabel('$\eta\'$')
+                ax[1].set_xlabel('$r$')
                 plt.tight_layout()
                 plt.show()
 
