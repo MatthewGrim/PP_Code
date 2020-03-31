@@ -19,7 +19,7 @@ from plasma_physics.pysrc.theory.tearing_modes.cylindrical_tearing_modes import 
 
 
 def get_stability_condition(plot_results=True):
-    current_factors = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.65, 0.675, 0.6875, 0.7, 0.8, 0.9, 1.0]
+    current_factors = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.65, 0.675, 0.6875, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]
     colors = cm.copper(np.linspace(0.0, 1.0, len(current_factors)))
 
     # Get profiles
@@ -47,7 +47,7 @@ def get_stability_condition(plot_results=True):
         for i, factor in enumerate(current_factors[::-1]):
             linestyle = '--' if i > 0 else '-'
             ax[0, 1].plot(r, factor * j_phi * 1e-3, linestyle=linestyle, c=colors[i])
-        ax[0, 1].set_ylabel('$j_{\phi}$ [kA]', fontsize=fontsize)
+        ax[0, 1].set_ylabel('$j_{p}$ [kA]', fontsize=fontsize)
         ax[1, 1].plot(r, q, c='k')
         ax[1, 1].set_ylabel('q', fontsize=fontsize)
         ax[1, 1].set_xlabel('r [m]', fontsize=fontsize)
@@ -113,18 +113,14 @@ def get_stability_condition(plot_results=True):
             gammas.append(solver.gamma)
             alphas.append(1 - factor)
 
-        alpha_data = np.stack((np.asarray(alphas[::-1]), np.asarray(deltas[::-1]))).transpose()
-        gamma_data = np.stack((np.asarray(alphas[::-1]), np.asarray(gammas[::-1]))).transpose()
-        np.savetxt(data_output, alpha_data)
-        np.savetxt(gamma_output, gamma_data)    
-
-    alphas = np.asarray(alphas)
-    deltas = np.asarray(deltas)
-    gammas = np.asarray(gammas)
+        alphas = np.stack((np.asarray(alphas[::-1]), np.asarray(deltas[::-1]))).transpose()
+        gammas = np.stack((np.asarray(alphas[::-1]), np.asarray(gammas[::-1]))).transpose()
+        np.savetxt(data_output, alphas)
+        np.savetxt(gamma_output, gammas)    
 
     # Load JOREK gammas
-    alphas_jor = [0.0, 0.1, 0.2, 0.25, 0.275, 0.3, 0.3125, 0.325, 0.3375]
-    gammas_jor = np.asarray([0.000110055, 7.14455e-5, 3.94265e-5, 2.48401e-5, 1.77428e-5, 1.0663e-5, 7.15803e-6, 3.77522e-6, 9.28732e-7])
+    alphas_jor = [-0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.25, 0.275, 0.3, 0.3125, 0.325, 0.3375]
+    gammas_jor = np.asarray([0.000305073, 0.000216954, 0.000154881, 0.000110055, 7.14455e-5, 3.94265e-5, 2.48401e-5, 1.77428e-5, 1.0663e-5, 7.15803e-6, 3.77522e-6, 9.28732e-7])
     gammas_jor /= 6.4836e-7
     np.savetxt('gammas_jor_vs_alpha.dat', np.stack((np.asarray(alphas_jor), np.asarray(gammas_jor))).transpose())
 
@@ -150,6 +146,8 @@ def get_stability_condition(plot_results=True):
     ax[0].plot(tm1_data[:, 0], tm1_data[:, 1], label='TM1')
     ax[0].scatter(tm1_data[:, 0], tm1_data[:, 1])
     ax[0].set_ylabel('$\gamma\ [s^{-1}]$', fontsize=fontsize)
+    ax[0].set_xlim([0.0, 1.0])
+    ax[0].set_ylim([0.0, 250.0])
     ax[0].legend()
 
     gammas_interp = interpolate.interp1d(gammas[:, 0], gammas[:, 1])
@@ -158,11 +156,13 @@ def get_stability_condition(plot_results=True):
     ax[1].scatter(alphas_jor, 100 * np.abs(gammas_jor - gammas_interp(alphas_jor)) / gammas_interp(alphas_jor), c='orange')
     ax[1].plot(tm1_data[:, 0], 100 * np.abs(tm1_data[:, 1] - gammas_interp(tm1_data[:, 0])) / gammas_interp(tm1_data[:, 0]), label='TM1 vs. Linear', c='g')
     ax[1].scatter(tm1_data[:, 0], 100 * np.abs(tm1_data[:, 1] - gammas_interp(tm1_data[:, 0])) / gammas_interp(tm1_data[:, 0]), c='g')
-    skipped_index = -3
-    ax[1].plot(alphas_jor[:skipped_index], 100 * np.abs(gammas_jor[:skipped_index] - gammas_tm1_interp(alphas_jor[:skipped_index])) / gammas_tm1_interp(alphas_jor[:skipped_index]), label='TM1 vs. JOREK', c='r')
-    ax[1].scatter(alphas_jor[:skipped_index], 100 * np.abs(gammas_jor[:skipped_index] - gammas_tm1_interp(alphas_jor[:skipped_index])) / gammas_tm1_interp(alphas_jor[:skipped_index]), c='r')
+    skipped_index_low = 3
+    skipped_index_high = -3
+    ax[1].plot(alphas_jor[skipped_index_low:skipped_index_high], 100 * np.abs(gammas_jor[skipped_index_low:skipped_index_high] - gammas_tm1_interp(alphas_jor[skipped_index_low:skipped_index_high])) / gammas_tm1_interp(alphas_jor[skipped_index_low:skipped_index_high]), label='TM1 vs. JOREK', c='r')
+    ax[1].scatter(alphas_jor[skipped_index_low:skipped_index_high], 100 * np.abs(gammas_jor[skipped_index_low:skipped_index_high] - gammas_tm1_interp(alphas_jor[skipped_index_low:skipped_index_high])) / gammas_tm1_interp(alphas_jor[skipped_index_low:skipped_index_high]), c='r')
     ax[1].set_ylabel('Relative difference $[\%]$', fontsize=fontsize)
     ax[1].set_xlabel('$\\alpha$', fontsize=fontsize)
+    ax[1].set_xlim([0.0, 0.4])
     plt.savefig('current_stability_gammas_{}'.format(m))
     plt.show()
 
@@ -191,14 +191,14 @@ def get_stability_condition(plot_results=True):
     # Plot equivalent gammas
     scaling = 1.05               # Factor to improve plot
     fig, ax = plt.subplots(1)
-    ax.plot(deltas[:, 0], deltas[:, 1], label='Linear $\Delta\'$')
+    ax.plot(deltas[:, 0], deltas[:, 1], label='Linear')
     ax.scatter(deltas[:, 0], deltas[:, 1])
-    ax.plot(alphas_jor, deltas_jor, label='JOREK $\Delta\'$ for $\eta=10^{-7}$')
+    ax.plot(alphas_jor, deltas_jor, label='JOREK')
     ax.scatter(alphas_jor, deltas_jor)
-    ax.plot(alphas_jor_8, deltas_jor_8, label='JOREK $\Delta\'$ for $\eta=10^{-8}$')
-    ax.scatter(alphas_jor_8, deltas_jor_8)
-    ax.plot(alphas_jor_8, deltas_jor_9, label='JOREK $\Delta\'$ for $\eta=10^{-9}$')
-    ax.scatter(alphas_jor_8, deltas_jor_9)
+    # ax.plot(alphas_jor_8, deltas_jor_8, label='JOREK $\Delta\'$ for $\eta=10^{-8}$')
+    # ax.scatter(alphas_jor_8, deltas_jor_8)
+    # ax.plot(alphas_jor_8, deltas_jor_9, label='JOREK $\Delta\'$ for $\eta=10^{-9}$')
+    # ax.scatter(alphas_jor_8, deltas_jor_9)
     ax.plot(tm1_data[:, 0], deltas_tm1, label='TM1')
     ax.scatter(tm1_data[:, 0], deltas_tm1)
     ax.axhline(0.0, c='k', linestyle='--')
@@ -209,7 +209,7 @@ def get_stability_condition(plot_results=True):
     ax.set_ylabel('$\Delta\'$', fontsize=fontsize)
     ax.set_xlabel('$\\alpha$', fontsize=fontsize)
     ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([scaling * min(deltas[:, 1]), scaling * max(deltas[:, 1])])
+    ax.set_ylim([scaling * min(deltas[:, 1]), 22.0])
     ax.grid(linestyle='--')
     ax.legend()
     plt.savefig('current_stability_deltas_{}'.format(m))
@@ -223,5 +223,5 @@ if __name__ == '__main__':
     m = 2
     fontsize=16
 
-    get_stability_condition(plot_results=True)
+    get_stability_condition(plot_results=False)
 
