@@ -136,7 +136,7 @@ class TearingModeSolverBase(object):
             print("Bisection converged in {} iterations: {}".format(iterations, grad_0))
 
         # Estimate A
-        num_samples = 100
+        num_samples = 25
         psi_s = 0.5 * (self.psi_sol_lower[-1, 0] + self.delta * self.psi_sol_lower[-1, 1] + self.psi_sol_upper[-1, 0] - self.delta * self.psi_sol_upper[-1, 1])
         self.psi_sol_lower[:, 0] /= psi_s
         self.psi_sol_upper[:, 0] /= psi_s
@@ -144,6 +144,12 @@ class TearingModeSolverBase(object):
         self.A_upper = self.fit_A_from_psi(self.r_upper[:num_samples] - self.r_instability, 1.0, self.psi_sol_upper[-num_samples:, 0][::-1]) 
 
     def find_delta(self, plot_output=False):
+        """
+        Main routine for finding stability parameter Delta
+        
+        Keyword Arguments:
+            plot_output {bool} -- plot the calculated mode structure for the instability
+        """
         self.find_delta_from_boundaries(plot_output)
         self.r_upper = self.r_upper[::-1]
 
@@ -158,7 +164,7 @@ class TearingModeSolverBase(object):
         print('r_0 Delta: {}'.format(self.r_instability * (self.A_upper - self.A_lower)))
         print("Psi_rs: {}".format(self.psi_rs))
         if plot_output:
-            num_samples = 100
+            num_samples = 25
             psi_lower_local = self.get_psi(self.r_lower[-num_samples:] - self.r_instability, self.A_lower, self.psi_rs)
             psi_upper_local = self.get_psi(self.r_upper[-num_samples:] - self.r_instability, self.A_upper, self.psi_rs)
             fig, ax = plt.subplots(2, sharex=True)
@@ -186,15 +192,14 @@ class TearingModeSolverNormalised(TearingModeSolverBase):
         self.r_max = 2.0
         self.k = 1.0 / (20 * self.r_max)
         self.R = self.r_max / self.k
-        # self.k = 1 / 20.0
-        # self.R = 20.0
         print("kr_0: {}".format(self.k * self.r_max))
         print("R: {}".format(self.R))
 
         # Generate simulation domain and integration points
+        scaling_factor = 10
         self.r_lower = np.concatenate((np.linspace(0.0, 0.99 * self.x_s, num_pts),
-                        np.linspace(0.99 * self.x_s, (1 - delta) * self.x_s, num_pts)))
-        self.r_upper = np.concatenate((np.linspace((1 + delta) * self.x_s, 1.01 * self.x_s, num_pts),
+                        np.linspace((1 - num_pts * scaling_factor * delta) * self.x_s, (1 - delta) * self.x_s, num_pts)))
+        self.r_upper = np.concatenate((np.linspace((1 + delta) * self.x_s, (1 + num_pts * scaling_factor * delta) * self.x_s, num_pts),
                                         np.linspace(1.01 * self.x_s, 2, num_pts)))
         self.x_to_r = 1.0
         self.q_0 = self.m / (1 + self.x_s ** 2)
@@ -262,9 +267,10 @@ class TearingModeSolver(TearingModeSolverBase):
         self.r_instability = self.q_to_r(m)
 
         # Generate simulation domain and integration points
+        scaling_factor = 1000
         self.r_lower = np.concatenate((np.linspace(0.0, 0.99 * self.r_instability, num_pts),
-                        np.linspace(0.99 * self.r_instability, (1 - delta) * self.r_instability, num_pts)))
-        self.r_upper = np.concatenate((np.linspace((1 + delta) * self.r_instability, 1.01 * self.r_instability, num_pts),
+                        np.linspace((1 - num_pts * scaling_factor * delta) * self.r_instability, (1 - delta) * self.r_instability, num_pts)))
+        self.r_upper = np.concatenate((np.linspace((1 + delta) * self.r_instability, (1 + num_pts * scaling_factor * delta) * self.r_instability, num_pts),
                                         np.linspace(1.01 * self.r_instability, r_max, num_pts)))
         
         # Generate other interpolators
@@ -328,7 +334,7 @@ class TearingModeSolver(TearingModeSolverBase):
             
 
 class MatsuokaTearingModeSolver(TearingModeSolverBase):
-    def __init__(self, m, r, r_max, B_theta, B_z, j_phi, iota_plasma, iota_ext, num_pts, n=1, delta=1e-12):
+    def __init__(self, m, r, r_max, R, B_theta, B_z, iota_plasma, iota_ext, num_pts, n=1, delta=1e-12):
         self.delta = delta
         self.n = n
         self.m = m
@@ -341,22 +347,23 @@ class MatsuokaTearingModeSolver(TearingModeSolverBase):
         self.r_instability = self.iota_tot_to_r(1.0 / m)
 
         # Generate simulation domain and integration points
+        scaling_factor = 1000
         self.r_lower = np.concatenate((np.linspace(0.0, 0.99 * self.r_instability, num_pts),
-                        np.linspace(0.99 * self.r_instability, (1 - delta) * self.r_instability, num_pts)))
-        self.r_upper = np.concatenate((np.linspace((1 + delta) * self.r_instability, 1.01 * self.r_instability, num_pts),
+                        np.linspace((1 - num_pts * scaling_factor * delta) * self.r_instability, (1 - delta) * self.r_instability, num_pts)))
+        self.r_upper = np.concatenate((np.linspace((1 + delta) * self.r_instability, (1 + num_pts * scaling_factor * delta) * self.r_instability, num_pts),
                                         np.linspace(1.01 * self.r_instability, r_max, num_pts)))
         
         # Generate other interpolators
         self.r_to_iota_ext = interpolate.interp1d(r, iota_ext)
         self.r_to_iota_plasma = interpolate.interp1d(r, iota_plasma)
         self.r_to_B_z = interpolate.interp1d(r, B_z)
+        self.r_to_B_theta = interpolate.interp1d(r, B_theta)
         iota_plasma_deriv = np.gradient(iota_plasma, r)
         iota_plasma_second_deriv = np.gradient(iota_plasma_deriv, r)
         self.r_to_iota_plasma_deriv = interpolate.interp1d(r, iota_plasma_deriv)
         self.r_to_iota_plasma_second_deriv = interpolate.interp1d(r, iota_plasma_second_deriv)
 
-        self.r_to_B_theta = interpolate.interp1d(r, B_theta)
-        self.r_to_B_z = interpolate.interp1d(r, B_z)
+        j_phi = B_z / (R * PhysicalConstants.mu_0) * (2 * iota_plasma + r * iota_plasma_deriv)
         self.r_to_j_phi = interpolate.interp1d(r, j_phi)
         j_phi_deriv = np.gradient(j_phi, r)
         self.r_to_j_phi_deriv = interpolate.interp1d(r, j_phi_deriv)
@@ -400,6 +407,21 @@ class MatsuokaTearingModeSolver(TearingModeSolverBase):
         print("Error in fit for A: {}".format(pcov[0]))
         return popt[0]
 
+    def get_gamma(self):
+        """
+        Get gamma normalised by density and resistivity. The equation used is defined in Wesson
+        """
+        B_theta = self.r_to_B_theta(self.r_instability)
+        q_deriv = self.r_to_q_deriv(self.r_instability)
+        q = self.r_to_q(self.r_instability)
+
+        gamma = self.delta ** 0.8
+        gamma *= (q_deriv / (self.r_instability * q)) ** 0.4
+        gamma *= (self.m * B_theta / np.sqrt(PhysicalConstants.mu_0)) ** 0.4
+        gamma /= PhysicalConstants.mu_0 ** 0.6
+        gamma *= 0.55
+
+        self.gamma = gamma
 
 if __name__ == '__main__':
     num_pts = 100000

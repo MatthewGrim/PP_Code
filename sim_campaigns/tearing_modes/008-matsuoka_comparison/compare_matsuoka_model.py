@@ -56,6 +56,8 @@ def compare_matsuoka(plot_results=True):
         q_ext[0] = q_ext[1]
         q_ext[np.isinf(q_ext)] = 1e12
 
+        B_theta = poloidal_field + poloidal_field_ext
+
         # Smooth input profiles using splines    
         num_skip = 20
         R_spline = interpolate.CubicSpline(r[::num_skip], R[::num_skip])
@@ -101,7 +103,7 @@ def compare_matsuoka(plot_results=True):
             plt.show()
 
         wesson_solver = TearingModeSolver(m, r, r_max, B_theta, B_z, j_phi_plasma, q, num_pts, delta=1e-12)
-        matsuoka_solver = MatsuokaTearingModeSolver(m, r, r_max, B_theta, B_z, j_phi_plasma, 1 / q_plasma, 1 / q_ext, num_pts, delta=1e-12)
+        matsuoka_solver = MatsuokaTearingModeSolver(m, r, r_max, R, B_theta, B_z, 1 / q_plasma, 1 / q_ext, num_pts, delta=1e-12)
         wesson_solver.find_delta(plot_output=False)
         matsuoka_solver.find_delta(plot_output=False)
 
@@ -130,7 +132,7 @@ def compare_matsuoka(plot_results=True):
     
     deltas = np.stack((np.asarray(alphas[::-1]), np.asarray(deltas_wesson[::-1]), np.asarray(deltas_matsuoka[::-1]))).transpose()
     header_string = "alpha    wesson    matsuoka"
-    np.savetxt('deltas.txt', deltas, header=header_string)
+    # np.savetxt('deltas.txt', deltas, header=header_string)
 
     fig, ax = plt.subplots(1)
     ax.plot(deltas[:, 0], deltas[:, 1], label='$\Delta\'_{Wesson}$')
